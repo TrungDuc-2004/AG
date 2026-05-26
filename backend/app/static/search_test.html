@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Test Keyword Search - TopicBag</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f6f7fb; margin: 0; padding: 32px; color: #182230; }
+    .wrap { max-width: 1180px; margin: 0 auto; background: #fff; border-radius: 18px; padding: 24px; box-shadow: 0 10px 30px rgba(16, 24, 40, .08); }
+    h1 { margin-top: 0; font-size: 24px; }
+    h2 { font-size: 18px; margin-top: 24px; }
+    .subtitle { color: #667085; margin-bottom: 20px; line-height: 1.5; }
+    .search-row { display: flex; gap: 10px; margin: 18px 0; }
+    input { flex: 1; font-size: 16px; padding: 12px 14px; border: 1px solid #d0d5dd; border-radius: 12px; }
+    button { border: 0; background: #155eef; color: white; padding: 12px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+    button:hover { background: #004eeb; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 20px; }
+    .chip { border: 1px solid #d0d5dd; border-radius: 999px; padding: 7px 11px; color: #344054; background: #f9fafb; cursor: pointer; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .level-card { border: 1px solid #eaecf0; border-radius: 14px; padding: 12px; background: #fcfcfd; min-height: 105px; }
+    .level-title { font-size: 13px; font-weight: 800; color: #155eef; text-transform: uppercase; margin-bottom: 8px; }
+    .level-item { border-top: 1px solid #eef0f3; padding-top: 8px; margin-top: 8px; font-size: 14px; }
+    .small { color: #667085; font-size: 12px; margin-top: 4px; line-height: 1.45; }
+    .result { border: 1px solid #eaecf0; border-radius: 16px; padding: 16px; margin: 12px 0; background: #fcfcfd; }
+    .score { float: right; color: #12b76a; font-weight: 700; }
+    .path { color: #667085; font-size: 14px; margin-bottom: 8px; }
+    .title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .preview { line-height: 1.55; color: #344054; }
+    .kw { margin-top: 10px; color: #475467; font-size: 14px; }
+    .badge { display: inline-block; background: #ecfdf3; color: #067647; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .loading { color: #155eef; font-weight: 700; }
+    .error { color: #d92d20; font-weight: 700; }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .search-row { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Test Keyword Search - TopicBag</h1>
+    <div class="subtitle">
+      Flow hiện tại giống code mẫu: Query → keyword → vector search <b>TopicBag</b> → match keyword thật trong TopicBag → keyword_id → DocumentKeyword/Document → rebuild Subject → Topic → Concept → Document.
+    </div>
+
+    <div class="search-row">
+      <input id="query" placeholder="Nhập keyword: byte, dữ liệu, thiết bị số, truyền thông..." value="byte" />
+      <button onclick="search()">Search</button>
+    </div>
+
+    <div class="chips">
+      <span class="chip" onclick="quick('byte')">byte</span>
+      <span class="chip" onclick="quick('đơn vị lưu trữ dữ liệu')">đơn vị lưu trữ dữ liệu</span>
+      <span class="chip" onclick="quick('dữ liệu')">dữ liệu</span>
+      <span class="chip" onclick="quick('thiết bị số')">thiết bị số</span>
+      <span class="chip" onclick="quick('truyền thông')">truyền thông</span>
+      <span class="chip" onclick="quick('internet')">internet</span>
+      <span class="chip" onclick="quick('xử lí thông tin')">xử lí thông tin</span>
+    </div>
+
+    <div id="status"></div>
+
+    <h2>Phân loại theo cấp</h2>
+    <div id="groups"></div>
+
+    <h2>Document / mục nhỏ phù hợp</h2>
+    <div id="results"></div>
+  </div>
+
+<script>
+function quick(q) {
+  document.getElementById('query').value = q;
+  search();
+}
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, s => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  }[s]));
+}
+
+function labelOf(item) {
+  return item.title || item.name || '';
+}
+
+function renderGroup(title, items) {
+  if (!items || !items.length) {
+    return `
+      <div class="level-card">
+        <div class="level-title">${esc(title)}</div>
+        <div class="small">Không có</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="level-card">
+      <div class="level-title">${esc(title)}</div>
+      ${items.map(item => `
+        <div class="level-item">
+          <b>${esc(labelOf(item))}</b>
+          <div class="small">Score: ${Number(item.score).toFixed(4)} · Documents: ${esc(item.matched_document_count)}</div>
+          <div class="small">Matched: ${esc((item.matched_keywords || []).join(', '))}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+async function search() {
+  const query = document.getElementById('query').value.trim();
+  const status = document.getElementById('status');
+  const groups = document.getElementById('groups');
+  const results = document.getElementById('results');
+  if (!query) return;
+
+  status.innerHTML = '<div class="loading">Đang tìm...</div>';
+  groups.innerHTML = '';
+  results.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/search/keyword', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, limit: 10 })
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    const data = await res.json();
+    status.innerHTML = `<div>Keyword tách được: <b>${esc(data.extracted_keywords.join(', '))}</b></div>`;
+
+    const g = data.groups || {};
+    groups.innerHTML = `
+      <div class="grid">
+        ${renderGroup('Subject / Môn học', g.subjects || [])}
+        ${renderGroup('Topic / Chủ đề', g.topics || [])}
+        ${renderGroup('Concept / Bài học', g.concepts || [])}
+        ${renderGroup('Document / Mục nhỏ', g.documents || [])}
+      </div>
+    `;
+
+    if (!data.results.length) {
+      results.innerHTML = '<p>Không có kết quả exact keyword trong TopicBag.</p>';
+      return;
+    }
+
+    results.innerHTML = data.results.map(item => {
+      const subject = item.subject?.name || '';
+      const topic = item.topic?.name || '';
+      const concept = item.concept?.title || item.concept?.name || '';
+      const documentTitle = item.document?.title || '';
+      const matched = (item.matched_keywords || []).map(k => k.keyword_name).join(', ');
+      const docKws = (item.document_keywords || []).join(', ');
+      return `
+        <div class="result">
+          <div class="score">${Number(item.score).toFixed(4)}</div>
+          <div><span class="badge">${esc(item.match_type || 'exact_keyword')}</span></div>
+          <div class="path">${esc(subject)} → ${esc(topic)} → ${esc(concept)}</div>
+          <div class="title">${esc(documentTitle)}</div>
+          <div class="preview">${esc(item.content_preview || '')}</div>
+          <div class="kw">Matched keyword: <b>${esc(matched)}</b></div>
+          <div class="kw">Document keywords: ${esc(docKws)}</div>
+          <div class="kw">File: ${esc(item.file_path || '')} | Pages: ${esc(item.page_start)}-${esc(item.page_end)}</div>
+        </div>
+      `;
+    }).join('');
+
+  } catch (err) {
+    status.innerHTML = `<div class="error">Lỗi: ${esc(err.message)}</div>`;
+  }
+}
+</script>
+</body>
+</html>

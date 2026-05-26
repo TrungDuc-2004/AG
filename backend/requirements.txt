@@ -1,0 +1,27 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+motor==3.6.0
+pymongo==4.9.2
+pydantic==2.10.4
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+email-validator==2.2.0
+asyncpg==0.30.0
+neo4j==5.27.0
+google-api-python-client>=2.0.0,<3.0.0
+google-auth>=2.0.0,<3.0.0
+google-auth-httplib2>=0.2.0,<1.0.0
+# AI-Extract pipeline dependencies
+google-genai
+kaggle
+pypdf
+PyMuPDF
+Pillow
+numpy
+pytesseract
+opencv-python-headless
+PyYAML>=6.0
+# Search/vector dependencies
+sentence-transformers
+google-auth-oauthlib>=1.0.0,<2.0.0

@@ -1,0 +1,611 @@
+{
+  "saved_at_epoch": 1779803924.9395661,
+  "next_idx": 6,
+  "call_count": 5,
+  "cycle_count": 0,
+  "keys": [
+    {
+      "index": 0,
+      "label": "GEMINI_API_KEY_1",
+      "key_hash": "16b72ac31f0cfc35f1fad598bbe7aede8a808a009268ec5c4f36705ddc841b11",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 1,
+      "label": "GEMINI_API_KEY_2",
+      "key_hash": "13f4c1cad0ddfe67181d04a6b2ed6030a551434223424c57a3b9ed1fd60cc1f0",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 2,
+      "label": "GEMINI_API_KEY_3",
+      "key_hash": "da59e05280977553403c810dfb1bcbe4c42345a251aded1d344deb552e041689",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 3,
+      "label": "GEMINI_API_KEY_4",
+      "key_hash": "c976af664086248ff1abcbcdd44ecb14372b95e6de6524696ca400927c15901e",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 4,
+      "label": "GEMINI_API_KEY_5",
+      "key_hash": "b2bbdb7ec7441cbfeb4501b6b7a5a45b490a71a177cb7639e88bef04e47d8766",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 5,
+      "label": "GEMINI_API_KEY_6",
+      "key_hash": "08a852562b1713a3a0026dbc133b251ade6c52c6f42af42cea07a7db5787c1d8",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 6,
+      "label": "GEMINI_API_KEY_7",
+      "key_hash": "2009741a7f6f70a50a8015b629c70b8c080085534443745179c165e07a757c0d",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 7,
+      "label": "GEMINI_API_KEY_8",
+      "key_hash": "981f304e78a07ce8f51c893eac633f87e9600fba2d7a38a0c73a412ef7294e62",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 8,
+      "label": "GEMINI_API_KEY_9",
+      "key_hash": "8367b1f3091d4a4c60f7e6b30c67a7d3c43f2d81e4faca409816a52f567d0416",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 9,
+      "label": "GEMINI_API_KEY_10",
+      "key_hash": "8367b1f3091d4a4c60f7e6b30c67a7d3c43f2d81e4faca409816a52f567d0416",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 10,
+      "label": "GEMINI_API_KEY_11",
+      "key_hash": "20edf7b46bf575c0e431d718361e0364bc4a812d0c41e33adecbe01390f9764a",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 11,
+      "label": "GEMINI_API_KEY_12",
+      "key_hash": "a5f7e363363291047b99be9e86e4b26346b889c3eaf7a2a1895888ef8263c40c",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 12,
+      "label": "GEMINI_API_KEY_13",
+      "key_hash": "8c73d4161c9a7975eddc8281460336151c1778b7e8a767a09be7344b5007e761",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 13,
+      "label": "GEMINI_API_KEY_14",
+      "key_hash": "c7c4b142dc342b52d412ec13ba5ff54c12c070e97cd33d5dd321a6e2d7be02ab",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 14,
+      "label": "GEMINI_API_KEY_15",
+      "key_hash": "96972a3fbb032987a67eb0821623b524b519e760ca613b0feac188589a886cae",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 15,
+      "label": "GEMINI_API_KEY_16",
+      "key_hash": "231caee4d065a6ed0052f065f5e4418baadf9e9885ec14a86644d07de0ffa526",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 16,
+      "label": "GEMINI_API_KEY_17",
+      "key_hash": "64fb2d7db671371250a6bf34e4d7437e040b8cd58efeb5f2620a6f6b975ed908",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 17,
+      "label": "GEMINI_API_KEY_18",
+      "key_hash": "c1264c1e2baa6110e91a19fd20e18abb3e0a6edf8809e87ce71eec5450769d4f",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 18,
+      "label": "GEMINI_API_KEY_19",
+      "key_hash": "544f1ef8e2ca7068777feea3fceea84d23202a0ec070837dc92036ba0b469c09",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 19,
+      "label": "GEMINI_API_KEY_20",
+      "key_hash": "aa39dfab7eda045ac90d89f0d177c31313657d6d9ab6700589f8a656942fe7f0",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 20,
+      "label": "GEMINI_API_KEY_21",
+      "key_hash": "68ff56f0e35d9c13a2a2d01e41511cd0e419ad0acf720accad064bbad3c7ba5c",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 21,
+      "label": "GEMINI_API_KEY_22",
+      "key_hash": "4eeeb525b7347d68bb3d5d945299c84ebad8076976aaa1ff73a8b918a9abee01",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 22,
+      "label": "GEMINI_API_KEY_23",
+      "key_hash": "90b171ddf27f1d10c24bc8f34ed642b21be099a5ef845596b023227df001888c",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 23,
+      "label": "GEMINI_API_KEY_24",
+      "key_hash": "169d827a2c9fa1d6b39914ca5ec54c2f1e2109d0829803c766cbbbcda512277d",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 24,
+      "label": "GEMINI_API_KEY_25",
+      "key_hash": "2e17bd4a2be16dfbf19b9cc04ed304980bb4c3f9a87b4d51311e8fa843bc3e75",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 25,
+      "label": "GEMINI_API_KEY_26",
+      "key_hash": "24cd91b16344a24e825b59a41fcfbd2983f9a96037e088af3e23c923aac5d1c7",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 26,
+      "label": "GEMINI_API_KEY_27",
+      "key_hash": "224a9378335dfc3630200514561bebc600083535d4e5d5d9d6f23745c0cf3b9e",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 27,
+      "label": "GEMINI_API_KEY_28",
+      "key_hash": "77a2ddaca98d7f787b9eee256ab9e028a76c0c566c0aec75df2848ac252cea35",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 28,
+      "label": "GEMINI_API_KEY_29",
+      "key_hash": "05b355dfe522f587784d42cb5fc86c38dc80f7c9e8b75cf95c8031fdaf4e38a8",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 29,
+      "label": "GEMINI_API_KEY_30",
+      "key_hash": "29f5f3e307122960d252d83f4438e4a509638e3eba6f5667f9aace3fe3a4a801",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 30,
+      "label": "GEMINI_API_KEY_31",
+      "key_hash": "1fb7e6664d99966b7cd02335e68b0d76f8822738027a9a49a339efcf64fb1124",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 31,
+      "label": "GEMINI_API_KEY_32",
+      "key_hash": "4a7da3e9e02596d4b710db9927ce80c84997d356b886761bf7a5c61e234a8dfc",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 32,
+      "label": "GEMINI_API_KEY_33",
+      "key_hash": "974620d9c6db0375c7f3919481e367cc644a6aa6dd7da16e3a80527dad61dbd4",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 33,
+      "label": "GEMINI_API_KEY_34",
+      "key_hash": "a5633b1e1adbc3951320ace99ace3cd014e0451c6f696daa7afeeaf606bcd250",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 34,
+      "label": "GEMINI_API_KEY_35",
+      "key_hash": "073d3168bfda1e70b7e7481694cdd32a0cae9c438bb61dc01c6e6bbba7dbff84",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 35,
+      "label": "GEMINI_API_KEY_36",
+      "key_hash": "5a8f8cefd2047fccc3604df9db2708aec0dd1649dcadedb766a9d6a887bcee19",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 36,
+      "label": "GEMINI_API_KEY_37",
+      "key_hash": "d0f417eb8817b6f9c4e0557dc31a62513f87987a5414aa40030e71a2b18bbb28",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 37,
+      "label": "GEMINI_API_KEY_38",
+      "key_hash": "232654f195284ae21dc3ddb23e4bd7a3f1c2b492faac9ef88d73738cef0fa7f9",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 38,
+      "label": "GEMINI_API_KEY_39",
+      "key_hash": "a13605357311123925b724563ceb72ec6330e1af33681edcb1c582c4bd730ca2",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 39,
+      "label": "GEMINI_API_KEY_40",
+      "key_hash": "ae02f1a1345cbc2d9b4f157e327fa1d457708bc65226c319950d84ccd95ec5af",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 40,
+      "label": "GEMINI_API_KEY_41",
+      "key_hash": "a3d8ba5af60dfccb5f89538ab53c2661f2e2e45f2112e2c3b73c98f474f70ee2",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 41,
+      "label": "GEMINI_API_KEY_42",
+      "key_hash": "b339b19e8d6f166e7c6abaf2a47a8a62b5e21eae1c34d6fdfe47b4c32e04969f",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 42,
+      "label": "GEMINI_API_KEY_43",
+      "key_hash": "9c79421d19387e87d0f99e2faa4bca63cd92efb191d03ac2c7e3c9c494532f7e",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 43,
+      "label": "GEMINI_API_KEY_44",
+      "key_hash": "4c6e26d64ab1c867f7801a0e5ba852ef6cb6d1ce24e3d0ffe9104912b8bde202",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 44,
+      "label": "GEMINI_API_KEY_45",
+      "key_hash": "f4c72d76c7265e6e75bef2e8d56bcaeead0a43ba64532a88a9cbe9ff43206b95",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 45,
+      "label": "GEMINI_API_KEY_46",
+      "key_hash": "0eff0451881f092e59d04aef348bde869c5ecd62f948b9fbed7fa943dc4dfaae",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 46,
+      "label": "GEMINI_API_KEY_47",
+      "key_hash": "426ef764745e1862697aa22a2ba3627d79f150c9f7f9ba0049e2df5e88809b7f",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 47,
+      "label": "GEMINI_API_KEY_48",
+      "key_hash": "844330b95b20b32104a3d91efd24e841602a3c65f769c20df28df38bdb1fa39a",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 48,
+      "label": "GEMINI_API_KEY_49",
+      "key_hash": "3ed5ee5d71869c73906c145246e8bf66d82de0864340488c9a989d6178246bef",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 49,
+      "label": "GEMINI_API_KEY_50",
+      "key_hash": "7ba63d2071b8a48ce01f6db3df306715399e2f5df9efd2a5972eea31b4bfe610",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 50,
+      "label": "GEMINI_API_KEY_51",
+      "key_hash": "a8952b4d66cf8543411c9e94d3c377a812b5f667641d3557b0239b3687f8d6bb",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 51,
+      "label": "GEMINI_API_KEY_52",
+      "key_hash": "8de2869c10172719536bf66955b4b8e07ac12574ef72fac324c67982d72024ab",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 52,
+      "label": "GEMINI_API_KEY_53",
+      "key_hash": "b6e26b6bb142c9d31871bb777f7213ab773050b35f86b315f457d646b2e5d882",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 53,
+      "label": "GEMINI_API_KEY_54",
+      "key_hash": "6b94ebc9c96ea7310b1a1d5d2337275ee85107197081c980b47aac7afd34292f",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 54,
+      "label": "GEMINI_API_KEY_55",
+      "key_hash": "fcd29f93fe934bfe91f9e5949f067db78922cef312cabbb03fbdbc4e8c5df9c2",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 55,
+      "label": "GEMINI_API_KEY_56",
+      "key_hash": "b7ed5bcedb1b7acd8e6008d9b1b65c55e2ad88dd3105e7cd0706250544dcb707",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 56,
+      "label": "GEMINI_API_KEY_57",
+      "key_hash": "403f77026820c541ba6a6eccaeb386c3a9ea3086118300ecb4669c7db5fd1f65",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 57,
+      "label": "GEMINI_API_KEY_58",
+      "key_hash": "74898eb8758a0dc089da43b40dc64499736145b8c169109bfa685e1d062e8148",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 58,
+      "label": "GEMINI_API_KEY_59",
+      "key_hash": "754e2e5e5ed4e176d6b32c7b7afc5ce2397b7f002a86a09c6a2fb3b3c6f130db",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 59,
+      "label": "GEMINI_API_KEY_60",
+      "key_hash": "748e4d400a300374bad23da99403d2b6180b8d2e8ecc0c88cbd6977231c630d7",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 60,
+      "label": "GEMINI_API_KEY_61",
+      "key_hash": "0d86be011774cbb67a58f2e4ed00a94657f29c5feaa03f09495229ff81f9e0b8",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 61,
+      "label": "GEMINI_API_KEY_62",
+      "key_hash": "78d12e22fbb6fc091b1eaaaf9d0e5868599ec1d2f33f723b728bdd9a754a63dd",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 62,
+      "label": "GEMINI_API_KEY_63",
+      "key_hash": "7a34563a3b91d061c8e223fc50d527bb7773d576a9d42462f496bf5f00a58838",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 63,
+      "label": "GEMINI_API_KEY_64",
+      "key_hash": "3cd37f8c9f69ec59ef769e91f78c354ebeefcc873fc2dfdea9c764eec9c7321f",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 64,
+      "label": "GEMINI_API_KEY_65",
+      "key_hash": "e0d3b5aa1f801fdf2910f03967945356f867feadbaa5dec4001c5bb27d809e17",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 65,
+      "label": "GEMINI_API_KEY_66",
+      "key_hash": "3e9b02ec0ad01151b42b33c2fe51fd785e3bad966304cebfb9ae369681de0008",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    },
+    {
+      "index": 66,
+      "label": "GEMINI_API_KEY_67",
+      "key_hash": "27f541258e620196e64eb69b01846e0c236f8219015199e98201546fcd912d66",
+      "cooldown_until_epoch": null,
+      "is_dead": false,
+      "dead_reason": null,
+      "dead_at_epoch": null
+    }
+  ]
+}
