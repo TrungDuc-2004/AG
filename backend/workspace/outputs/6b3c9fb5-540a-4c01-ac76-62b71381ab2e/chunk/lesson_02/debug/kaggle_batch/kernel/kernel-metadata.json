@@ -1,0 +1,14 @@
+{
+  "id": "mycrush2004/debug-cutline-one-chunk",
+  "title": "debug-cutline-one-chunk",
+  "code_file": "script.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "mycrush2004/ai-extract-cutline-debug"
+  ],
+  "competition_sources": []
+}

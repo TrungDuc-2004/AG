@@ -1,7 +1,23 @@
+import re
+import unicodedata
 from typing import Any
 
-from embedding_utils import cosine_similarity
 from neo4j import GraphDatabase
+
+
+def _normalize_for_compare(value: str | None) -> str:
+    if not value:
+        return ""
+    text = unicodedata.normalize("NFKD", str(value))
+    text = text.encode("ascii", "ignore").decode("ascii")
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _slugify(value: str | None) -> str:
+    normalized = _normalize_for_compare(value)
+    return normalized.replace(" ", "-")
 
 
 class Neo4jKeywordSearchService:
@@ -11,44 +27,32 @@ class Neo4jKeywordSearchService:
     def close(self):
         self.driver.close()
 
-    def search_topic_bags(self, query_embedding: list[float], limit: int = 5) -> list[dict[str, Any]]:
-        """
-        Search keyword giống code mẫu:
-        keyword query embedding -> vector search TopicBag -> Topic candidate.
+    def search_keyword_documents(self, query_keyword: str, limit: int = 10) -> list[dict[str, Any]]:
+        """Search directly on Keyword -> Document graph.
 
-        TopicBag được tạo bằng cách gom keyword từ:
-        Topic -> Concept -> Document -> Keyword.
+        TopicBag has been removed from PostgreSQL/Neo4j, so keyword search now uses
+        the real Keyword nodes attached to Document nodes. This keeps the graph light:
+        Subject -> Topic -> Concept -> Document -> Keyword.
         """
-        with self.driver.session() as session:
-            try:
-                return self._vector_search_topic_bags(session, query_embedding, limit)
-            except Exception as exc:
-                print(f"[keyword-search] Vector search fallback because: {exc}")
-                return self._python_fallback_search_topic_bags(session, query_embedding, limit)
+        normalized_query = _normalize_for_compare(query_keyword)
+        slug_query = _slugify(query_keyword)
+        raw_query = str(query_keyword or "").strip().lower()
 
-    def find_documents_by_topic_and_keyword(
-        self,
-        topic_id: str,
-        keyword_id: str,
-        topic_score: float,
-        matched_query_keyword: str,
-        matched_keyword_name: str,
-        limit: int = 10,
-    ) -> list[dict[str, Any]]:
-        """
-        Sau khi match keyword thật trong TopicBag, dùng keyword_id để lấy Document thật.
-
-        Tương đương code mẫu:
-        keyword_id -> chunk_keyword -> chunk -> rebuild lesson/topic/subject.
-
-        Bản của mình:
-        keyword_id -> Document-HAS_KEYWORD->Keyword -> Document -> Concept -> Topic -> Subject.
-        """
         cypher = """
-        MATCH (subject:Subject)-[:HAS_TOPIC]->(topic:Topic {topic_id: $topic_id})
+        MATCH (subject:Subject)-[:HAS_TOPIC]->(topic:Topic)
         MATCH (topic)-[:HAS_CONCEPT]->(concept:Concept)
         MATCH (concept)-[:HAS_DOCUMENT]->(document:Document)
-        MATCH (document)-[:HAS_KEYWORD]->(keyword:Keyword {keyword_id: $keyword_id})
+        MATCH (document)-[:HAS_KEYWORD]->(keyword:Keyword)
+
+        WITH subject, topic, concept, document, keyword,
+             toLower(coalesce(keyword.keyword_name, keyword.name, '')) AS kw_name_lc,
+             toLower(coalesce(keyword.normalized_name, '')) AS kw_norm_lc,
+             coalesce(keyword.aliases, []) AS kw_aliases
+        WHERE
+             kw_name_lc CONTAINS $raw_query
+             OR kw_norm_lc CONTAINS $normalized_query
+             OR kw_norm_lc CONTAINS $slug_query
+             OR any(alias IN kw_aliases WHERE toLower(toString(alias)) CONTAINS $raw_query)
 
         OPTIONAL MATCH (document)-[:HAS_KEYWORD]->(doc_kw:Keyword)
 
@@ -58,16 +62,21 @@ class Neo4jKeywordSearchService:
             concept,
             document,
             keyword,
+            kw_name_lc,
+            kw_norm_lc,
             collect(DISTINCT doc_kw.keyword_name) AS document_keywords,
             collect(DISTINCT doc_kw.aliases) AS document_keyword_alias_groups
 
         RETURN
-            $topic_score AS score,
-            'exact_keyword' AS match_type,
-            $matched_query_keyword AS matched_query_keyword,
-            $matched_keyword_name AS matched_keyword_name,
+            CASE
+                WHEN kw_name_lc = $raw_query THEN 1.0
+                WHEN kw_norm_lc = $normalized_query OR kw_norm_lc = $slug_query THEN 0.95
+                ELSE 0.75
+            END AS score,
+            'direct_keyword' AS match_type,
+            $query_keyword AS matched_query_keyword,
+            keyword.keyword_name AS matched_keyword_name,
             keyword.keyword_id AS matched_keyword_id,
-
             document_keywords,
             document_keyword_alias_groups,
 
@@ -90,81 +99,21 @@ class Neo4jKeywordSearchService:
             document.page_end AS document_page_end,
             document.order_index AS document_order_index
 
-        ORDER BY document_order_index ASC, document_id ASC
+        ORDER BY score DESC, document_order_index ASC, document_id ASC
         LIMIT $limit
         """
 
         with self.driver.session() as session:
             result = session.run(
                 cypher,
-                topic_id=topic_id,
-                keyword_id=keyword_id,
-                topic_score=topic_score,
-                matched_query_keyword=matched_query_keyword,
-                matched_keyword_name=matched_keyword_name,
+                query_keyword=query_keyword,
+                raw_query=raw_query,
+                normalized_query=normalized_query,
+                slug_query=slug_query,
                 limit=limit,
             )
             return [dict(record) for record in result]
 
-    def _vector_search_topic_bags(self, session, query_embedding: list[float], limit: int) -> list[dict[str, Any]]:
-        cypher = """
-        CALL db.index.vector.queryNodes('topic_bag_embedding_idx', $limit, $embedding)
-        YIELD node AS bag, score
-
-        MATCH (topic:Topic)-[:HAS_TOPIC_BAG]->(bag)
-        MATCH (subject:Subject)-[:HAS_TOPIC]->(topic)
-
-        RETURN
-            score,
-            bag.topic_bag_id AS topic_bag_id,
-            bag.embedding_text AS topic_bag_text,
-            bag.keyword_ids AS keyword_ids,
-            bag.keyword_names AS keyword_names,
-            bag.normalized_names AS normalized_names,
-            bag.aliases AS aliases,
-            bag.keyword_alias_pairs AS keyword_alias_pairs,
-            bag.document_ids AS topic_bag_document_ids,
-
-            subject.subject_id AS subject_id,
-            subject.name AS subject_name,
-
-            topic.topic_id AS topic_id,
-            topic.name AS topic_name
-
-        ORDER BY score DESC
-        LIMIT $limit
-        """
-        result = session.run(cypher, embedding=query_embedding, limit=limit)
-        return [dict(record) for record in result]
-
-    def _python_fallback_search_topic_bags(self, session, query_embedding: list[float], limit: int) -> list[dict[str, Any]]:
-        cypher = """
-        MATCH (topic:Topic)-[:HAS_TOPIC_BAG]->(bag:TopicBag)
-        MATCH (subject:Subject)-[:HAS_TOPIC]->(topic)
-
-        RETURN
-            bag.embedding AS embedding,
-            bag.topic_bag_id AS topic_bag_id,
-            bag.embedding_text AS topic_bag_text,
-            bag.keyword_ids AS keyword_ids,
-            bag.keyword_names AS keyword_names,
-            bag.normalized_names AS normalized_names,
-            bag.aliases AS aliases,
-            bag.keyword_alias_pairs AS keyword_alias_pairs,
-            bag.document_ids AS topic_bag_document_ids,
-
-            subject.subject_id AS subject_id,
-            subject.name AS subject_name,
-
-            topic.topic_id AS topic_id,
-            topic.name AS topic_name
-        """
-        rows: list[dict[str, Any]] = []
-        for record in session.run(cypher):
-            item = dict(record)
-            item["score"] = cosine_similarity(query_embedding, item.get("embedding") or [])
-            item.pop("embedding", None)
-            rows.append(item)
-
-        rows.sort(key=lambda x: x.get("score", 0), reverse=True)
-        return rows[:limit]
+    # Backward-compatible method name retained for older callers.
+    def find_documents_by_keyword(self, query_keyword: str, limit: int = 10) -> list[dict[str, Any]]:
+        return self.search_keyword_documents(query_keyword=query_keyword, limit=limit)

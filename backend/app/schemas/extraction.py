@@ -132,6 +132,7 @@ class ChunkApproveResponse(BaseModel):
     status: str
     chunks: list[ChunkItem]
     chunks_approved_path: str
+    persistence: dict[str, Any] | None = None
 
 
 class KeywordItem(BaseModel):
@@ -175,6 +176,16 @@ class LessonKeywordReviewResponse(BaseModel):
     lesson_name: str
     status: str
     results: list[LessonKeywordDebugResult]
+    missing_chunks: list[str] = Field(default_factory=list)
+
+
+class KeywordChunkExtractResponse(BaseModel):
+    job_id: str
+    lesson_name: str
+    chunk_name: str
+    keyword_count: int
+    keywords: list[KeywordItem]
+    keyword_path: str
 
 
 class LessonKeywordApproveResponse(BaseModel):

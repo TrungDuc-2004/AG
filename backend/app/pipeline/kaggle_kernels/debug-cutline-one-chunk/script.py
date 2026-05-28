@@ -14,6 +14,7 @@ os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
 
 WORKING_DIR = Path("/kaggle/working")
 STATUS_FILE = WORKING_DIR / "current_run_status.json"
+EXPECTED_REQUEST_ID: str | None = None
 
 MIN_MATCH_REQUIRED = 3
 ALLOW_WEAK_CUT = True
@@ -48,6 +49,41 @@ def find_input_file(name: str) -> Path:
     return matches[0]
 
 
+def _read_json_object(path: Path) -> dict:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"{path} must contain a JSON object")
+    return payload
+
+
+def find_request_file() -> Path:
+    matches = sorted(Path("/kaggle/input").rglob("run_request.json"))
+    if not matches:
+        raise FileNotFoundError("Missing Kaggle input file: run_request.json")
+
+    expected = str(EXPECTED_REQUEST_ID or "").strip()
+    if not expected:
+        return matches[0]
+
+    seen: list[str] = []
+    unreadable: list[str] = []
+    for candidate in matches:
+        try:
+            payload = _read_json_object(candidate)
+        except Exception as exc:
+            unreadable.append(f"{candidate}: {exc}")
+            continue
+        request_id = str(payload.get("request_id") or "").strip()
+        seen.append(f"{candidate}={request_id}")
+        if request_id == expected:
+            return candidate
+
+    raise FileNotFoundError(
+        "No run_request.json matched EXPECTED_REQUEST_ID. "
+        f"expected={expected}; seen={seen}; unreadable={unreadable}"
+    )
+
+
 def find_input_path(relative_path: str) -> Path:
     normalized = relative_path.strip().lstrip("/")
     matches = sorted(Path("/kaggle/input").rglob(normalized))
@@ -57,11 +93,8 @@ def find_input_path(relative_path: str) -> Path:
 
 
 def load_request() -> dict:
-    request_path = find_input_file("run_request.json")
-    payload = json.loads(request_path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError("run_request.json must contain a JSON object")
-    return payload
+    request_path = find_request_file()
+    return _read_json_object(request_path)
 
 
 def poly_bbox(poly: Any) -> list[float]:

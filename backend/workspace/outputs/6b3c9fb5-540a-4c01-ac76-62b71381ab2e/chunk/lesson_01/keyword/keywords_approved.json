@@ -1,0 +1,96 @@
+{
+  "job_id": "6b3c9fb5-540a-4c01-ac76-62b71381ab2e",
+  "lesson_name": "lesson_01",
+  "status": "approved_keywords",
+  "approved_at": "2026-05-27T17:10:14.768866+00:00",
+  "results": [
+    {
+      "chunk_name": "chunk_01",
+      "keyword_count": 5,
+      "keywords": [
+        {
+          "keyword_name": "Vật lí"
+        },
+        {
+          "keyword_name": "Đối tượng nghiên cứu của Vật lí"
+        },
+        {
+          "keyword_name": "Khoa học tự nhiên"
+        },
+        {
+          "keyword_name": "Lĩnh vực nghiên cứu của Vật lí"
+        },
+        {
+          "keyword_name": "Năng lực vật lí"
+        }
+      ],
+      "keyword_path": "D:\\AG Project\\STEM_AI_Extract\\backend\\workspace\\outputs\\6b3c9fb5-540a-4c01-ac76-62b71381ab2e\\chunk\\lesson_01\\keyword\\keyword_chunk_01.json"
+    },
+    {
+      "chunk_name": "chunk_02",
+      "keyword_count": 5,
+      "keywords": [
+        {
+          "keyword_name": "tiền Vật lí"
+        },
+        {
+          "keyword_name": "Vật lí cổ điển"
+        },
+        {
+          "keyword_name": "Vật lí hiện đại"
+        },
+        {
+          "keyword_name": "phương pháp thực nghiệm"
+        },
+        {
+          "keyword_name": "thuyết lượng tử"
+        }
+      ],
+      "keyword_path": "D:\\AG Project\\STEM_AI_Extract\\backend\\workspace\\outputs\\6b3c9fb5-540a-4c01-ac76-62b71381ab2e\\chunk\\lesson_01\\keyword\\keyword_chunk_02.json"
+    },
+    {
+      "chunk_name": "chunk_03",
+      "keyword_count": 5,
+      "keywords": [
+        {
+          "keyword_name": "Khoa học tự nhiên"
+        },
+        {
+          "keyword_name": "Công nghệ"
+        },
+        {
+          "keyword_name": "Cách mạng công nghiệp"
+        },
+        {
+          "keyword_name": "Cảm ứng điện từ"
+        },
+        {
+          "keyword_name": "Điện tử, chất bán dẫn, vi mạch"
+        }
+      ],
+      "keyword_path": "D:\\AG Project\\STEM_AI_Extract\\backend\\workspace\\outputs\\6b3c9fb5-540a-4c01-ac76-62b71381ab2e\\chunk\\lesson_01\\keyword\\keyword_chunk_03.json"
+    },
+    {
+      "chunk_name": "chunk_04",
+      "keyword_count": 5,
+      "keywords": [
+        {
+          "keyword_name": "Phương pháp thực nghiệm"
+        },
+        {
+          "keyword_name": "Phương pháp mô hình"
+        },
+        {
+          "keyword_name": "Mô hình vật chất"
+        },
+        {
+          "keyword_name": "Mô hình lí thuyết"
+        },
+        {
+          "keyword_name": "Mô hình toán học"
+        }
+      ],
+      "keyword_path": "D:\\AG Project\\STEM_AI_Extract\\backend\\workspace\\outputs\\6b3c9fb5-540a-4c01-ac76-62b71381ab2e\\chunk\\lesson_01\\keyword\\keyword_chunk_04.json"
+    }
+  ]
+}

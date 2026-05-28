@@ -120,12 +120,19 @@ def update_job_lesson_chunks(
     response_model=ChunkApproveResponse,
     response_model_exclude_none=True,
 )
-def approve_job_lesson_chunks(
+async def approve_job_lesson_chunks(
     job_id: str,
     lesson_name: str,
+    persist: bool = Query(default=True),
 ) -> ChunkApproveResponse:
     try:
-        return approve_chunks_for_lesson(job_id=job_id, lesson_name=lesson_name)
+        response = approve_chunks_for_lesson(job_id=job_id, lesson_name=lesson_name)
+        if persist:
+            response.persistence = await ExtractPersistenceService().persist_approved_documents(
+                job_id=job_id,
+                lesson_name=lesson_name,
+            )
+        return response
 
     except ChunkReviewInputError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -151,11 +158,10 @@ async def finalize_job_lesson_chunks(
 ) -> LessonCutlineFullResponse:
     try:
         response = process_full_lesson_cutlines(job_id=job_id, lesson_name=lesson_name)
-        if persist and response.status in {"completed", "completed_with_keyword_error"}:
-            response.persistence = await ExtractPersistenceService().persist_lesson_documents(
+        if persist and response.status == "completed":
+            response.persistence = await ExtractPersistenceService().persist_finalized_documents(
                 job_id=job_id,
                 lesson_name=lesson_name,
-                upload_documents=True,
             )
         return response
 

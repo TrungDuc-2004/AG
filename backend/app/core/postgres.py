@@ -25,6 +25,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- TOPIC_BAG was removed from the PostgreSQL target schema.
+-- Drop it during target initialization so old development tables do not remain.
+DROP TABLE IF EXISTS TOPIC_BAG CASCADE;
+
 CREATE TABLE IF NOT EXISTS SUBJECT (
     subject_id VARCHAR(100) PRIMARY KEY,
     name VARCHAR(255),
@@ -149,25 +153,12 @@ CREATE TABLE IF NOT EXISTS DOCUMENT_KEYWORD (
     PRIMARY KEY (document_id, keyword_id)
 );
 
-CREATE TABLE IF NOT EXISTS TOPIC_BAG (
-    topic_bag_id VARCHAR(100) PRIMARY KEY,
-    topic_id VARCHAR(100) NOT NULL REFERENCES TOPIC(topic_id),
-    owner_type VARCHAR(50) NOT NULL DEFAULT 'topic',
-    owner_id VARCHAR(100) NOT NULL,
-    document_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
-    keyword_refs JSONB NOT NULL DEFAULT '[]'::jsonb,
-    embedding_text TEXT,
-    embedding JSONB,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
 
 CREATE INDEX IF NOT EXISTS idx_topic_subject_id ON TOPIC(subject_id);
 CREATE INDEX IF NOT EXISTS idx_concept_topic_id ON CONCEPT(topic_id);
 CREATE INDEX IF NOT EXISTS idx_document_topic_id ON DOCUMENT(topic_id);
 CREATE INDEX IF NOT EXISTS idx_doc_concept_document_id ON DOC_CONCEPT(document_id);
 CREATE INDEX IF NOT EXISTS idx_document_keyword_keyword_id ON DOCUMENT_KEYWORD(keyword_id);
-CREATE INDEX IF NOT EXISTS idx_topic_bag_topic_id ON TOPIC_BAG(topic_id);
 """
 
 # If the app previously created the old BIGSERIAL schema, drop only the sync target
@@ -234,9 +225,6 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
     CREATE TRIGGER trg_document_keyword_updated_at BEFORE UPDATE ON DOCUMENT_KEYWORD FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN
-    CREATE TRIGGER trg_topic_bag_updated_at BEFORE UPDATE ON TOPIC_BAG FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 """
 

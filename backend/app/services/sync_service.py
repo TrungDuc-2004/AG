@@ -132,17 +132,6 @@ def _jsonb(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def _embed_topic_bag_text(text: str) -> list[float]:
-    if not settings.AUTO_EMBED_TOPIC_BAG or not text:
-        return []
-    try:
-        from embedding_utils import e5_embed_passage
-
-        return e5_embed_passage(text)
-    except Exception:
-        return []
-
-
 def _storage_object_key(document_doc: dict[str, Any]) -> str | None:
     storage = document_doc.get("storage") or {}
     return storage.get("objectKey") or document_doc.get("filePath")
@@ -163,7 +152,7 @@ class SyncService:
     Target schema follows the provided migration files:
     - PostgreSQL IDs are VARCHAR(100), using the app's map_id as the business ID.
     - MongoDB remains the source of truth.
-    - Neo4j receives Subject/Topic/Concept/Document/Keyword/TopicBag/TypeDoc nodes.
+    - Neo4j receives Subject/Topic/Concept/Document/Keyword nodes. TopicBag and TypeDoc are not synced to Neo4j.
     """
 
     def __init__(self) -> None:
@@ -200,7 +189,6 @@ class SyncService:
             "typedocs",
             "keywords",
             "document_keywords",
-            "topic_bags",
             "document_metadata",
             "class_subjects",
             "doc_concepts",
@@ -564,82 +552,14 @@ class SyncService:
                 {"document_id": row["document_id"], "typedoc_id": typedoc["typedoc_id"]},
                 {},
             )
-        for keyword in _split_keywords(document_doc.get("keysearch")):
-            pg_keyword = await self._pg_upsert_keyword(conn, keyword)
-            await self._pg_link_document_keyword(conn, row["document_id"], pg_keyword["keyword_id"])
-        await self._pg_rebuild_topic_bag(conn, topic_id)
-        return row
-
-    async def _pg_rebuild_topic_bag(self, conn: asyncpg.Connection, topic_id: str) -> asyncpg.Record:
-        doc_rows = await conn.fetch(
-            "SELECT document_id, title, keysearch FROM DOCUMENT WHERE topic_id = $1 ORDER BY document_id",
-            topic_id,
-        )
-        document_ids = [row["document_id"] for row in doc_rows]
-        keyword_rows = await conn.fetch(
-            """
-            SELECT DISTINCT k.keyword_id, k.keyword_name, k.normalized_name, k.aliases
-            FROM KEYWORD k
-            JOIN DOCUMENT_KEYWORD dk ON dk.keyword_id = k.keyword_id
-            JOIN DOCUMENT d ON d.document_id = dk.document_id
-            WHERE d.topic_id = $1
-            ORDER BY k.keyword_id
-            """,
-            topic_id,
-        )
-        keyword_refs = [
-            {
-                "keyword_id": row["keyword_id"],
-                "keyword_name": row["keyword_name"],
-                "normalized_name": row["normalized_name"],
-                "aliases": json.loads(row["aliases"]) if isinstance(row["aliases"], str) else (row["aliases"] or []),
-            }
-            for row in keyword_rows
-        ]
-        embedding_text = " ".join(
-            [f"topic_id: {topic_id}"]
-            + [str(row["title"] or "") for row in doc_rows]
-            + [str(ref["keyword_name"] or "") for ref in keyword_refs]
-        ).strip()
-        topic_bag_id = _string_id(f"TB_{topic_id}")
-        row = await conn.fetchrow(
-            """
-            INSERT INTO TOPIC_BAG (
-                topic_bag_id, topic_id, owner_type, owner_id, document_ids,
-                keyword_refs, embedding_text, embedding
-            )
-            VALUES ($1, $2, 'topic', $2, $3::jsonb, $4::jsonb, $5, $6::jsonb)
-            ON CONFLICT (topic_bag_id) DO UPDATE SET
-                topic_id = EXCLUDED.topic_id,
-                owner_type = EXCLUDED.owner_type,
-                owner_id = EXCLUDED.owner_id,
-                document_ids = EXCLUDED.document_ids,
-                keyword_refs = EXCLUDED.keyword_refs,
-                embedding_text = EXCLUDED.embedding_text,
-                embedding = EXCLUDED.embedding,
-                updated_at = CURRENT_TIMESTAMP
-            RETURNING *
-            """,
-            topic_bag_id,
-            topic_id,
-            _jsonb(document_ids),
-            _jsonb(keyword_refs),
-            embedding_text,
-            _jsonb(_embed_topic_bag_text(embedding_text)),
-        )
-        await self._mongo_upsert_aux(
-            "topic_bags",
-            {"topic_bag_id": topic_bag_id},
-            {
-                "topic_id": topic_id,
-                "owner_type": "topic",
-                "owner_id": topic_id,
-                "document_ids": document_ids,
-                "keyword_refs": keyword_refs,
-                "embedding_text": embedding_text,
-                "embedding": _embed_topic_bag_text(embedding_text),
-            },
-        )
+        # Keep DOCUMENT_KEYWORD exactly aligned with the current keysearch when
+        # keyword data is present. Finalize/chunk-approve runs with keysearch empty
+        # should not wipe existing approved keywords.
+        if document_doc.get("keysearch") not in (None, ""):
+            await conn.execute("DELETE FROM DOCUMENT_KEYWORD WHERE document_id = $1", row["document_id"])
+            for keyword in _split_keywords(document_doc.get("keysearch")):
+                pg_keyword = await self._pg_upsert_keyword(conn, keyword)
+                await self._pg_link_document_keyword(conn, row["document_id"], pg_keyword["keyword_id"])
         return row
 
     # ---------- Neo4j sync helpers ----------
@@ -796,14 +716,6 @@ class SyncService:
                 """,
                 pg_document["document_id"],
             )
-            type_rows = await conn.fetch(
-                """
-                SELECT td.* FROM TYPEDOC td
-                JOIN DOC_TYPE dt ON dt.typedoc_id = td.typedoc_id
-                WHERE dt.document_id = $1
-                """,
-                pg_document["document_id"],
-            )
             keyword_rows = await conn.fetch(
                 """
                 SELECT k.* FROM KEYWORD k
@@ -812,7 +724,6 @@ class SyncService:
                 """,
                 pg_document["document_id"],
             )
-            topic_bag = await conn.fetchrow("SELECT * FROM TOPIC_BAG WHERE topic_id = $1", pg_document["topic_id"])
         for pg_concept in concept_rows:
             await self._neo4j_sync_concept(driver, pg_concept)
         async with driver.session(database=settings.NEO4J_DATABASE) as session:
@@ -850,20 +761,6 @@ class SyncService:
                     concept_id=pg_concept["concept_id"],
                     document_id=pg_document["document_id"],
                 )
-            for td in type_rows:
-                await session.run(
-                    """
-                    MATCH (d:Document {document_id: $document_id})
-                    MERGE (td:TypeDoc {typedoc_id: $typedoc_id})
-                    SET td.name = $name,
-                        td.description = $description
-                    MERGE (d)-[:HAS_TYPE]->(td)
-                    """,
-                    document_id=pg_document["document_id"],
-                    typedoc_id=td["typedoc_id"],
-                    name=td["name"],
-                    description=td["description"],
-                )
             for keyword in keyword_rows:
                 aliases = keyword["aliases"]
                 if isinstance(aliases, str):
@@ -885,59 +782,6 @@ class SyncService:
                     normalized_name=keyword["normalized_name"],
                     aliases=aliases or [],
                 )
-            if topic_bag:
-                await self._neo4j_sync_topic_bag(driver, topic_bag)
-
-    async def _neo4j_sync_topic_bag(self, driver: AsyncDriver, topic_bag: asyncpg.Record) -> None:
-        def _loads(value: Any) -> Any:
-            return json.loads(value) if isinstance(value, str) else value
-
-        keyword_refs = _loads(topic_bag["keyword_refs"]) or []
-        keyword_ids = [ref.get("keyword_id") for ref in keyword_refs if ref.get("keyword_id")]
-        keyword_names = [ref.get("keyword_name") for ref in keyword_refs if ref.get("keyword_name")]
-        normalized_names = [ref.get("normalized_name") for ref in keyword_refs if ref.get("normalized_name")]
-        aliases: list[str] = []
-        keyword_alias_pairs: list[str] = []
-        for ref in keyword_refs:
-            for alias in ref.get("aliases") or []:
-                aliases.append(alias)
-                if ref.get("keyword_id"):
-                    keyword_alias_pairs.append(f"{ref['keyword_id']}::{alias}")
-
-        async with driver.session(database=settings.NEO4J_DATABASE) as session:
-            await session.run(
-                """
-                MATCH (t:Topic {topic_id: $topic_id})
-                MERGE (bag:TopicBag {topic_bag_id: $topic_bag_id})
-                SET bag.pg_id = $topic_bag_id,
-                    bag.owner_type = $owner_type,
-                    bag.owner_id = $owner_id,
-                    bag.topic_id = $topic_id,
-                    bag.document_ids = $document_ids,
-                    bag.keyword_ids = $keyword_ids,
-                    bag.keyword_names = $keyword_names,
-                    bag.normalized_names = $normalized_names,
-                    bag.aliases = $aliases,
-                    bag.keyword_alias_pairs = $keyword_alias_pairs,
-                    bag.embedding_text = $embedding_text,
-                    bag.embedding_model = $embedding_model,
-                    bag.embedding = $embedding
-                MERGE (t)-[:HAS_TOPIC_BAG]->(bag)
-                """,
-                topic_bag_id=topic_bag["topic_bag_id"],
-                owner_type=topic_bag["owner_type"],
-                owner_id=topic_bag["owner_id"],
-                topic_id=topic_bag["topic_id"],
-                document_ids=_loads(topic_bag["document_ids"]) or [],
-                keyword_ids=keyword_ids,
-                keyword_names=keyword_names,
-                normalized_names=normalized_names,
-                aliases=aliases,
-                keyword_alias_pairs=keyword_alias_pairs,
-                embedding_text=topic_bag["embedding_text"],
-                embedding_model=settings.EMBEDDING_MODEL,
-                embedding=_loads(topic_bag["embedding"]) or [],
-            )
 
     # ---------- Public sync methods ----------
 

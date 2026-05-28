@@ -16,12 +16,22 @@ NEO4J_CONSTRAINTS = (
     "CREATE CONSTRAINT concept_id_unique IF NOT EXISTS FOR (c:Concept) REQUIRE c.concept_id IS UNIQUE",
     "CREATE CONSTRAINT document_id_unique IF NOT EXISTS FOR (d:Document) REQUIRE d.document_id IS UNIQUE",
     "CREATE CONSTRAINT keyword_id_unique IF NOT EXISTS FOR (k:Keyword) REQUIRE k.keyword_id IS UNIQUE",
-    "CREATE CONSTRAINT topic_bag_id_unique IF NOT EXISTS FOR (b:TopicBag) REQUIRE b.topic_bag_id IS UNIQUE",
+)
+
+NEO4J_SCHEMA_CLEANUP_QUERIES = (
+    "DROP INDEX topic_bag_embedding_idx IF EXISTS",
+    "DROP INDEX search_bag_embedding_idx IF EXISTS",
+    "DROP CONSTRAINT topic_bag_id_unique IF EXISTS",
 )
 
 NEO4J_CLEANUP_QUERIES = (
     # Remove older design properties while preserving nodes/relationships that can be merged later.
     "MATCH (n) REMOVE n.mongo_id",
+    # TopicBag and TypeDoc are no longer part of the Neo4j graph target.
+    "MATCH ()-[r:HAS_TOPIC_BAG]->() DELETE r",
+    "MATCH (b:TopicBag) DETACH DELETE b",
+    "MATCH ()-[r:HAS_TYPE]->() DELETE r",
+    "MATCH (td:TypeDoc) DETACH DELETE td",
 )
 
 
@@ -64,37 +74,16 @@ async def _try_create_database() -> None:
         return
 
 
-async def _try_create_topic_bag_vector_index() -> None:
-    driver = get_neo4j_driver()
-    try:
-        async with driver.session(database=settings.NEO4J_DATABASE) as session:
-            await session.run("DROP INDEX search_bag_embedding_idx IF EXISTS")
-            # Recreate the TopicBag vector index when EMBEDDING_DIM changes during development.
-            await session.run("DROP INDEX topic_bag_embedding_idx IF EXISTS")
-            await session.run(
-                """
-                CREATE VECTOR INDEX topic_bag_embedding_idx
-                IF NOT EXISTS
-                FOR (bag:TopicBag)
-                ON (bag.embedding)
-                OPTIONS {
-                  indexConfig: {
-                    `vector.dimensions`: $dim,
-                    `vector.similarity_function`: 'cosine'
-                  }
-                }
-                """,
-                dim=settings.EMBEDDING_DIM,
-            )
-    except (ClientError, Neo4jError):
-        # Older Neo4j versions may not support vector indexes; keyword/topic search still works.
-        return
-
-
 async def ensure_neo4j_ready() -> None:
     await _try_create_database()
     driver = get_neo4j_driver()
     async with driver.session(database=settings.NEO4J_DATABASE) as session:
+        for query in NEO4J_SCHEMA_CLEANUP_QUERIES:
+            try:
+                await session.run(query)
+            except (ClientError, Neo4jError):
+                pass
+
         for query in NEO4J_CONSTRAINTS:
             try:
                 await session.run(query)
@@ -115,7 +104,6 @@ async def ensure_neo4j_ready() -> None:
             """
         )
 
-    await _try_create_topic_bag_vector_index()
 
 
 async def neo4j_health() -> dict[str, Any]:

@@ -1,0 +1,38 @@
+{
+  "job_id": "6b3c9fb5-540a-4c01-ac76-62b71381ab2e",
+  "lesson_name": "lesson_02",
+  "source_lesson_pdf": "D:\\AG Project\\STEM_AI_Extract\\backend\\workspace\\outputs\\6b3c9fb5-540a-4c01-ac76-62b71381ab2e\\lesson\\doc\\lesson_02.pdf",
+  "kaggle_mode": "batch",
+  "kaggle_request_id": "f480045b-cf9c-4606-93db-b9f59e68f79c",
+  "kaggle_runs": 1,
+  "processed_chunks": [
+    "chunk_01"
+  ],
+  "skipped_chunks": [
+    {
+      "chunk_name": "chunk_02",
+      "reason": "content_head=false"
+    },
+    {
+      "chunk_name": "chunk_03",
+      "reason": "content_head=false"
+    }
+  ],
+  "failed_chunks": [],
+  "updated_pdfs": [
+    "chunk_01.pdf",
+    "chunk_02.pdf",
+    "chunk_03.pdf"
+  ],
+  "cutline_boundaries": {
+    "chunk_01": {
+      "page_number": 1,
+      "y_cut_image": 1201,
+      "image_height": 3041,
+      "y_cut_pdf": 332.53600789214073,
+      "match_score": 93,
+      "best_mode": "prefix_line"
+    }
+  },
+  "status": "completed"
+}
