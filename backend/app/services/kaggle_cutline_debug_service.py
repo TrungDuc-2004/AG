@@ -78,17 +78,12 @@ def run_kaggle_cutline_debug(
         kernel_dir=kernel_dir,
         kernel_ref=config.kernel_ref,
         dataset_ref=config.dataset_ref,
-        request_id=request_id,
     )
 
     _publish_dataset(config=config, dataset_dir=dataset_dir, request_id=request_id)
     _push_kernel(config=config, kernel_dir=kernel_dir)
-    _download_matching_kernel_output(
-        config=config,
-        download_dir=download_dir,
-        request_id=request_id,
-        result_filename="cutline_result.json",
-    )
+    _wait_kernel_complete(config=config)
+    _download_kernel_output(config=config, download_dir=download_dir)
 
     status = _read_status(download_dir=download_dir, request_id=request_id)
     if status and status.get("request_id") != request_id:
@@ -157,17 +152,12 @@ def run_kaggle_cutline_batch(
         kernel_dir=kernel_dir,
         kernel_ref=config.kernel_ref,
         dataset_ref=config.dataset_ref,
-        request_id=request_id,
     )
 
     _publish_dataset(config=config, dataset_dir=dataset_dir, request_id=request_id)
     _push_kernel(config=config, kernel_dir=kernel_dir)
-    _download_matching_kernel_output(
-        config=config,
-        download_dir=download_dir,
-        request_id=request_id,
-        result_filename="cutline_results.json",
-    )
+    _wait_kernel_complete(config=config)
+    _download_kernel_output(config=config, download_dir=download_dir)
 
     status = _read_status(download_dir=download_dir, request_id=request_id)
     if status and status.get("request_id") != request_id:
@@ -251,7 +241,6 @@ def prepare_kaggle_cutline_debug_package(
         kernel_dir=kernel_dir,
         kernel_ref=config.kernel_ref,
         dataset_ref=config.dataset_ref,
-        request_id=str(request_payload.get("request_id") or "debug"),
     )
     return {
         "dataset_dir": str(dataset_dir),
@@ -328,8 +317,6 @@ def _run_kaggle_command(
         env=_kaggle_env(config),
         capture_output=True,
         text=True,
-        encoding="utf-8",
-        errors="replace",
         check=False,
     )
     if check and completed.returncode != 0:
@@ -403,30 +390,11 @@ def _prepare_kernel(
     kernel_dir: Path,
     kernel_ref: str,
     dataset_ref: str,
-    request_id: str,
 ) -> None:
     if kernel_dir.exists():
         shutil.rmtree(kernel_dir)
     kernel_dir.mkdir(parents=True, exist_ok=True)
-
-    source_script = KERNEL_SOURCE_DIR / "script.py"
-    script_text = source_script.read_text(encoding="utf-8")
-    expected_line = f"EXPECTED_REQUEST_ID: str | None = {json.dumps(request_id, ensure_ascii=False)}"
-    if "EXPECTED_REQUEST_ID: str | None = None" in script_text:
-        script_text = script_text.replace(
-            "EXPECTED_REQUEST_ID: str | None = None",
-            expected_line,
-            1,
-        )
-    else:
-        script_text += "\n" + expected_line + "\n"
-    script_text += (
-        "\n# Auto-generated marker to force a fresh Kaggle kernel version.\n"
-        f"# AI_EXTRACT_REQUEST_ID = {json.dumps(request_id, ensure_ascii=False)}\n"
-        f"# AI_EXTRACT_DATASET_REF = {json.dumps(dataset_ref, ensure_ascii=False)}\n"
-    )
-    (kernel_dir / "script.py").write_text(script_text, encoding="utf-8")
-
+    shutil.copyfile(KERNEL_SOURCE_DIR / "script.py", kernel_dir / "script.py")
     write_json(
         kernel_dir / "kernel-metadata.json",
         {
@@ -515,71 +483,6 @@ def _wait_kernel_complete(config: KaggleCutlineConfig) -> None:
 
         time.sleep(config.poll_seconds)
 
-
-
-def _download_matching_kernel_output(
-    *,
-    config: KaggleCutlineConfig,
-    download_dir: Path,
-    request_id: str,
-    result_filename: str,
-) -> None:
-    started = time.monotonic()
-    last_status = ""
-    last_status_request_id: str | None = None
-    last_result_request_id: str | None = None
-
-    while True:
-        status_completed = _run_kaggle_command(
-            config,
-            ["kaggle", "kernels", "status", config.kernel_ref],
-            check=False,
-        )
-        last_status = (status_completed.stdout or status_completed.stderr or "").strip()
-
-        _download_kernel_output(config=config, download_dir=download_dir)
-
-        status = _read_status(download_dir=download_dir, request_id=request_id)
-        if isinstance(status, dict):
-            raw_status_id = status.get("request_id")
-            if raw_status_id is not None:
-                last_status_request_id = str(raw_status_id)
-            if status.get("request_id") == request_id and status.get("status") == "failed":
-                raise KaggleCutlineError(
-                    f"Kaggle cutline kernel failed: {status.get('error') or status}"
-                )
-
-        result_path = download_dir / result_filename
-        if result_path.exists():
-            try:
-                result = read_json(result_path)
-            except Exception:
-                result = None
-            if isinstance(result, dict):
-                raw_result_id = result.get("request_id")
-                if raw_result_id is not None:
-                    last_result_request_id = str(raw_result_id)
-                if raw_result_id == request_id:
-                    return
-
-        if (
-            "KernelWorkerStatus.FAILED" in last_status
-            or "KernelWorkerStatus.ERROR" in last_status
-        ):
-            if last_status_request_id == request_id:
-                raise KaggleCutlineError(f"Kaggle kernel failed: {last_status}")
-
-        if time.monotonic() - started > config.timeout_seconds:
-            raise KaggleCutlineError(
-                "Timed out waiting for Kaggle output for the current request_id. "
-                f"expected={request_id}, "
-                f"last_status_request_id={last_status_request_id}, "
-                f"last_result_request_id={last_result_request_id}, "
-                f"result_filename={result_filename}, "
-                f"kernel_status={last_status}"
-            )
-
-        time.sleep(config.poll_seconds)
 
 def _download_kernel_output(
     *,

@@ -1,0 +1,36 @@
+{
+  "request_id": "b58f45e2-37d6-4d23-9c8c-f224ff75f169",
+  "job_id": "6b3c9fb5-540a-4c01-ac76-62b71381ab2e",
+  "lesson_name": "lesson_03",
+  "mode": "lesson_cutline_full",
+  "items": [
+    {
+      "chunk_name": "chunk_01",
+      "page_number": 1,
+      "image_file": "pages/chunk_01.png",
+      "heading": "1.",
+      "title": "PHÉP ĐO TRỰC TIẾP VÀ PHÉP ĐO GIÁN TIẾP"
+    },
+    {
+      "chunk_name": "chunk_02",
+      "page_number": 1,
+      "image_file": "pages/chunk_02.png",
+      "heading": "II.",
+      "title": "SAI SỐ PHÉP ĐO"
+    },
+    {
+      "chunk_name": "chunk_04",
+      "page_number": 2,
+      "image_file": "pages/chunk_04.png",
+      "heading": "3.",
+      "title": "Cách xác định sai số phép đo gián tiếp"
+    },
+    {
+      "chunk_name": "chunk_05",
+      "page_number": 2,
+      "image_file": "pages/chunk_05.png",
+      "heading": "4.",
+      "title": "Cách ghi kết quả đo"
+    }
+  ]
+}
