@@ -28,9 +28,12 @@ $$ LANGUAGE plpgsql;
 -- TOPIC_BAG was removed from the PostgreSQL target schema.
 -- Drop it during target initialization so old development tables do not remain.
 DROP TABLE IF EXISTS TOPIC_BAG CASCADE;
+DROP TABLE IF EXISTS DOCUMENT_KEYWORD CASCADE;
+DROP TABLE IF EXISTS KEYWORD CASCADE;
 
 CREATE TABLE IF NOT EXISTS SUBJECT (
     subject_id VARCHAR(100) PRIMARY KEY,
+    metadata_id VARCHAR(255),
     name VARCHAR(255),
     description TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -55,6 +58,7 @@ CREATE TABLE IF NOT EXISTS TYPEDOC (
 
 CREATE TABLE IF NOT EXISTS TOPIC (
     topic_id VARCHAR(100) PRIMARY KEY,
+    metadata_id VARCHAR(255),
     subject_id VARCHAR(100) NOT NULL REFERENCES SUBJECT(subject_id),
     name VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -63,7 +67,7 @@ CREATE TABLE IF NOT EXISTS TOPIC (
 
 CREATE TABLE IF NOT EXISTS CONCEPT (
     concept_id VARCHAR(100) PRIMARY KEY,
-    topic_id VARCHAR(100) NOT NULL REFERENCES TOPIC(topic_id),
+    metadata_id VARCHAR(255),
     name VARCHAR(255),
     definition TEXT,
     file_path VARCHAR(500),
@@ -93,7 +97,6 @@ CREATE TABLE IF NOT EXISTS DOCUMENT (
     title VARCHAR(255),
     file_path VARCHAR(500),
     keysearch TEXT,
-    topic_id VARCHAR(100) NOT NULL REFERENCES TOPIC(topic_id),
     metadata_id VARCHAR(255),
     content_preview TEXT,
     order_index INTEGER,
@@ -112,11 +115,12 @@ CREATE TABLE IF NOT EXISTS CLASS_SUBJECT (
 );
 
 CREATE TABLE IF NOT EXISTS DOC_CONCEPT (
+    topic_id VARCHAR(100) NOT NULL REFERENCES TOPIC(topic_id),
     concept_id VARCHAR(100) NOT NULL REFERENCES CONCEPT(concept_id),
     document_id VARCHAR(100) NOT NULL REFERENCES DOCUMENT(document_id),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (concept_id, document_id)
+    PRIMARY KEY (topic_id, concept_id, document_id)
 );
 
 CREATE TABLE IF NOT EXISTS DOC_TYPE (
@@ -136,29 +140,49 @@ CREATE TABLE IF NOT EXISTS LOG (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS KEYWORD (
-    keyword_id VARCHAR(100) PRIMARY KEY,
-    keyword_name VARCHAR(255) NOT NULL,
-    normalized_name VARCHAR(255),
-    aliases JSONB NOT NULL DEFAULT '[]'::jsonb,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
+-- Backward-compatible reshaping for already-created development databases.
+ALTER TABLE SUBJECT ADD COLUMN IF NOT EXISTS metadata_id VARCHAR(255);
+ALTER TABLE TOPIC ADD COLUMN IF NOT EXISTS metadata_id VARCHAR(255);
+ALTER TABLE CONCEPT ADD COLUMN IF NOT EXISTS metadata_id VARCHAR(255);
+ALTER TABLE DOCUMENT ADD COLUMN IF NOT EXISTS metadata_id VARCHAR(255);
+ALTER TABLE DOC_CONCEPT ADD COLUMN IF NOT EXISTS topic_id VARCHAR(100);
 
-CREATE TABLE IF NOT EXISTS DOCUMENT_KEYWORD (
-    document_id VARCHAR(100) NOT NULL REFERENCES DOCUMENT(document_id),
-    keyword_id VARCHAR(100) NOT NULL REFERENCES KEYWORD(keyword_id),
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (document_id, keyword_id)
-);
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'concept' AND column_name = 'topic_id'
+    ) THEN
+        UPDATE DOC_CONCEPT dc
+        SET topic_id = c.topic_id
+        FROM CONCEPT c
+        WHERE dc.concept_id = c.concept_id
+          AND dc.topic_id IS NULL;
+    END IF;
+END $$;
 
+DELETE FROM DOC_CONCEPT WHERE topic_id IS NULL;
+
+ALTER TABLE DOC_CONCEPT ALTER COLUMN topic_id SET NOT NULL;
+ALTER TABLE DOC_CONCEPT DROP CONSTRAINT IF EXISTS doc_concept_pkey;
+ALTER TABLE DOC_CONCEPT ADD PRIMARY KEY (topic_id, concept_id, document_id);
+ALTER TABLE DOC_CONCEPT DROP CONSTRAINT IF EXISTS doc_concept_topic_id_fkey;
+ALTER TABLE DOC_CONCEPT
+    ADD CONSTRAINT doc_concept_topic_id_fkey
+    FOREIGN KEY (topic_id) REFERENCES TOPIC(topic_id);
+
+ALTER TABLE CONCEPT DROP COLUMN IF EXISTS topic_id CASCADE;
+ALTER TABLE DOCUMENT DROP COLUMN IF EXISTS topic_id CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_subject_metadata_id ON SUBJECT(metadata_id);
+CREATE INDEX IF NOT EXISTS idx_topic_metadata_id ON TOPIC(metadata_id);
+CREATE INDEX IF NOT EXISTS idx_concept_metadata_id ON CONCEPT(metadata_id);
+CREATE INDEX IF NOT EXISTS idx_document_metadata_id ON DOCUMENT(metadata_id);
 
 CREATE INDEX IF NOT EXISTS idx_topic_subject_id ON TOPIC(subject_id);
-CREATE INDEX IF NOT EXISTS idx_concept_topic_id ON CONCEPT(topic_id);
-CREATE INDEX IF NOT EXISTS idx_document_topic_id ON DOCUMENT(topic_id);
+CREATE INDEX IF NOT EXISTS idx_doc_concept_topic_id ON DOC_CONCEPT(topic_id);
+CREATE INDEX IF NOT EXISTS idx_doc_concept_concept_id ON DOC_CONCEPT(concept_id);
 CREATE INDEX IF NOT EXISTS idx_doc_concept_document_id ON DOC_CONCEPT(document_id);
-CREATE INDEX IF NOT EXISTS idx_document_keyword_keyword_id ON DOCUMENT_KEYWORD(keyword_id);
 """
 
 # If the app previously created the old BIGSERIAL schema, drop only the sync target
@@ -219,12 +243,6 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
     CREATE TRIGGER trg_log_updated_at BEFORE UPDATE ON LOG FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN
-    CREATE TRIGGER trg_keyword_updated_at BEFORE UPDATE ON KEYWORD FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN
-    CREATE TRIGGER trg_document_keyword_updated_at BEFORE UPDATE ON DOCUMENT_KEYWORD FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 """
 

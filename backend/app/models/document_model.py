@@ -13,7 +13,6 @@ class DocumentModel(MongoBaseModel):
     keysearch: str | None = None
     conceptMapId: str = Field(..., examples=["TH10_T1_C1"])
     concept_id: str | None = None
-    topic_id: str | None = None
     typedocs: str = Field(..., examples=["1"])
     metadata: DocumentMetadata
     storage: StorageInfo

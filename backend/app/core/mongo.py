@@ -107,13 +107,11 @@ async def create_indexes() -> None:
     await _safe_create_index(db.concepts, "concept_id", unique=True, sparse=True)
     await _safe_create_index(db.concepts, "map_id", unique=True, sparse=True)
     await _safe_create_index(db.concepts, "topicMapId")
-    await _safe_create_index(db.concepts, "topic_id", sparse=True)
     await _safe_create_index(db.concepts, [("topicMapId", 1), ("name", 1)], unique=True, sparse=True)
 
     await _safe_create_index(db.documents, "document_id", unique=True, sparse=True)
     await _safe_create_index(db.documents, "map_id", unique=True, sparse=True)
     await _safe_create_index(db.documents, "conceptMapId")
-    await _safe_create_index(db.documents, "topic_id", sparse=True)
     await _safe_create_index(db.documents, "typedocs")
     await _safe_create_index(db.documents, "status")
     await _safe_create_index(db.documents, "storage.objectKey")

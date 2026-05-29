@@ -195,9 +195,10 @@ class ExtractPersistenceService:
         subject_doc = await self.subjects.upsert_by_map_id(
             subject_id,
             {
-                "map_id": subject_id,
-                "subject_id": subject_id,
-                "name": subject_id,
+                    "map_id": subject_id,
+                    "subject_id": subject_id,
+                    "metadata_id": _metadata_id(subject_id),
+                    "name": subject_id,
                 "classMapId": class_id,
                 "class_id": class_id,
                 "description": None,
@@ -274,6 +275,7 @@ class ExtractPersistenceService:
                 {
                     "map_id": topic_id,
                     "topic_id": topic_id,
+                    "metadata_id": _metadata_id(topic_id),
                     "subjectMapId": subject_id,
                     "subject_id": subject_id,
                     "name": title,
@@ -334,8 +336,8 @@ class ExtractPersistenceService:
                 {
                     "map_id": lesson_id,
                     "concept_id": lesson_id,
+                    "metadata_id": _metadata_id(lesson_id),
                     "topicMapId": topic_id,
-                    "topic_id": topic_id,
                     "name": lesson_title,
                     "definition": None,
                     "conceptNumber": _number_from_name(lesson_id),
@@ -531,7 +533,6 @@ class ExtractPersistenceService:
             "keysearch": keysearch,
             "conceptMapId": concept_id,
             "concept_id": concept_id,
-            "topic_id": topic_id,
             "typedocs": "pdf",
             "metadata": metadata.model_dump(mode="python"),
             "storage": storage.model_dump(mode="python"),
@@ -663,7 +664,7 @@ class ExtractPersistenceService:
 
         This is called by /chunks/.../finalize. It overwrites the same document_id
         records created at chunk approval time, but still does not create/update
-        KEYWORD, DOCUMENT_KEYWORD or keyword-derived data.
+        keyword-derived data.
         """
         result = await self._persist_documents_for_lesson(
             job_id=job_id,
@@ -682,7 +683,13 @@ class ExtractPersistenceService:
         not receive TopicBag. The embedding_text must be built from keyword_name
         values, not from topic/document/chunk titles.
         """
-        cursor = self.documents.collection.find({"topic_id": topic_id})
+        concept_ids: list[str] = []
+        async for concept in self.concepts.collection.find({"topicMapId": topic_id}):
+            concept_id = str(concept.get("map_id") or concept.get("concept_id") or "").strip()
+            if concept_id and concept_id not in concept_ids:
+                concept_ids.append(concept_id)
+
+        cursor = self.documents.collection.find({"conceptMapId": {"$in": concept_ids}})
         document_ids: list[str] = []
         keyword_refs_by_id: dict[str, dict[str, Any]] = {}
 
@@ -746,8 +753,9 @@ class ExtractPersistenceService:
         """Persist approved keyword data onto existing DOCUMENT records.
 
         This is called by /keywords/.../approve.
-        It updates DOCUMENT.keysearch and lets the sync layer create/update KEYWORD
-        and DOCUMENT_KEYWORD from that keysearch. TopicBag is no longer used.
+        It updates DOCUMENT.keysearch and lets the sync layer create MongoDB
+        keywords/document_keywords plus Neo4j Keyword nodes from that keysearch.
+        PostgreSQL no longer stores keyword tables.
         """
         lesson, concept_id, topic_id, class_name, source_file = await self._get_lesson_context(
             job_id=job_id,
@@ -806,7 +814,7 @@ class ExtractPersistenceService:
             "count": len(persisted),
             "items": persisted,
             "topic_bag": topic_bag,
-            "note": "Approved keywords were synced into document.keysearch, KEYWORD and DOCUMENT_KEYWORD. MongoDB topic_bag was rebuilt from keyword_name values only.",
+            "note": "Approved keywords were synced into document.keysearch, MongoDB keywords/document_keywords, and Neo4j Keyword nodes. MongoDB topic_bag was rebuilt from keyword_name values only.",
         }
 
     async def persist_lesson_documents(

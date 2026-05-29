@@ -1,4 +1,3 @@
-import json
 import re
 import unicodedata
 from datetime import date, datetime, timezone
@@ -68,6 +67,17 @@ def _document_id(doc: dict[str, Any]) -> str:
     return _doc_business_id(doc, "document_id")
 
 
+def _entity_metadata_id(doc: dict[str, Any], business_id: str) -> str:
+    metadata = doc.get("metadata") if isinstance(doc.get("metadata"), dict) else {}
+    return str(
+        doc.get("metadata_id")
+        or doc.get("metadataId")
+        or metadata.get("metadata_id")
+        or metadata.get("metadataId")
+        or f"META_{business_id}"
+    )[:255]
+
+
 def _user_id(doc: dict[str, Any]) -> str:
     return _doc_business_id(doc, "user_id")
 
@@ -128,17 +138,13 @@ def _split_keywords(keysearch: str | None) -> list[dict[str, Any]]:
     return keywords
 
 
-def _jsonb(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False)
-
-
 def _storage_object_key(document_doc: dict[str, Any]) -> str | None:
     storage = document_doc.get("storage") or {}
     return storage.get("objectKey") or document_doc.get("filePath")
 
 
 def _metadata_id(document_doc: dict[str, Any]) -> str:
-    return str(document_doc.get("metadata_id") or f"META_{_document_id(document_doc)}")[:255]
+    return _entity_metadata_id(document_doc, _document_id(document_doc))
 
 
 def _content_preview(document_doc: dict[str, Any]) -> str | None:
@@ -152,7 +158,8 @@ class SyncService:
     Target schema follows the provided migration files:
     - PostgreSQL IDs are VARCHAR(100), using the app's map_id as the business ID.
     - MongoDB remains the source of truth.
-    - Neo4j receives Subject/Topic/Concept/Document/Keyword nodes. TopicBag and TypeDoc are not synced to Neo4j.
+    - Neo4j receives Subject/Topic/Concept/Document/Keyword nodes. Keyword nodes are derived from DOCUMENT.keysearch.
+      TopicBag and TypeDoc are not synced to Neo4j.
     """
 
     def __init__(self) -> None:
@@ -259,6 +266,48 @@ class SyncService:
         )
         return metadata_id
 
+    async def _mongo_sync_document_keywords(self, document_id: str, keysearch: str | None) -> None:
+        """Keep Mongo keywords/document_keywords aligned with DOCUMENT.keysearch.
+
+        PostgreSQL no longer stores keyword tables, but MongoDB remains the
+        operational source for extracted keyword refs.
+        """
+        if keysearch in (None, ""):
+            return
+
+        db = get_database()
+        keywords = _split_keywords(keysearch)
+        now = datetime.now(timezone.utc)
+
+        await db.document_keywords.delete_many({"document_id": document_id})
+        for keyword in keywords:
+            keyword_payload = {
+                **keyword,
+                "metadata_id": _entity_metadata_id(keyword, keyword["keyword_id"]),
+                "updatedAt": now,
+            }
+            await db.keywords.update_one(
+                {"keyword_id": keyword["keyword_id"]},
+                {
+                    "$set": keyword_payload,
+                    "$setOnInsert": {"createdAt": now},
+                },
+                upsert=True,
+            )
+            await db.document_keywords.update_one(
+                {"document_id": document_id, "keyword_id": keyword["keyword_id"]},
+                {
+                    "$set": {
+                        "document_id": document_id,
+                        "keyword_id": keyword["keyword_id"],
+                        "keyword_name": keyword["keyword_name"],
+                        "updatedAt": now,
+                    },
+                    "$setOnInsert": {"createdAt": now},
+                },
+                upsert=True,
+            )
+
     # ---------- PostgreSQL upsert helpers ----------
 
     async def _pg_upsert_class(self, conn: asyncpg.Connection, class_doc: dict[str, Any]) -> asyncpg.Record:
@@ -289,15 +338,17 @@ class SyncService:
         pg_class = await self._pg_upsert_class(conn, class_doc)
         row = await conn.fetchrow(
             """
-            INSERT INTO SUBJECT (subject_id, name, description)
-            VALUES ($1, $2, $3)
+            INSERT INTO SUBJECT (subject_id, metadata_id, name, description)
+            VALUES ($1, $2, $3, $4)
             ON CONFLICT (subject_id) DO UPDATE SET
+                metadata_id = EXCLUDED.metadata_id,
                 name = EXCLUDED.name,
                 description = EXCLUDED.description,
                 updated_at = CURRENT_TIMESTAMP
             RETURNING *
             """,
             subject_id,
+            _entity_metadata_id(subject_doc, subject_id),
             subject_doc.get("name"),
             subject_doc.get("description"),
         )
@@ -328,15 +379,17 @@ class SyncService:
         pg_subject = await self._pg_upsert_subject(conn, subject_doc)
         return await conn.fetchrow(
             """
-            INSERT INTO TOPIC (topic_id, subject_id, name)
-            VALUES ($1, $2, $3)
+            INSERT INTO TOPIC (topic_id, metadata_id, subject_id, name)
+            VALUES ($1, $2, $3, $4)
             ON CONFLICT (topic_id) DO UPDATE SET
+                metadata_id = EXCLUDED.metadata_id,
                 subject_id = EXCLUDED.subject_id,
                 name = EXCLUDED.name,
                 updated_at = CURRENT_TIMESTAMP
             RETURNING *
             """,
             topic_id,
+            _entity_metadata_id(topic_doc, topic_id),
             pg_subject["subject_id"],
             topic_doc.get("name"),
         )
@@ -349,13 +402,13 @@ class SyncService:
         topic_doc = await self.topics.find_by_map_id(str(topic_ref))
         if not topic_doc:
             raise ValueError(f"Topic not found for concept {concept_id}")
-        pg_topic = await self._pg_upsert_topic(conn, topic_doc)
+        await self._pg_upsert_topic(conn, topic_doc)
         return await conn.fetchrow(
             """
-            INSERT INTO CONCEPT (concept_id, topic_id, name, definition, file_path)
+            INSERT INTO CONCEPT (concept_id, metadata_id, name, definition, file_path)
             VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (concept_id) DO UPDATE SET
-                topic_id = EXCLUDED.topic_id,
+                metadata_id = EXCLUDED.metadata_id,
                 name = EXCLUDED.name,
                 definition = EXCLUDED.definition,
                 file_path = EXCLUDED.file_path,
@@ -363,7 +416,7 @@ class SyncService:
             RETURNING *
             """,
             concept_id,
-            pg_topic["topic_id"],
+            _entity_metadata_id(concept_doc, concept_id),
             concept_doc.get("name"),
             concept_doc.get("definition"),
             concept_doc.get("filePath") or concept_doc.get("file_path"),
@@ -439,47 +492,6 @@ class SyncService:
         )
         return row
 
-    async def _pg_upsert_keyword(self, conn: asyncpg.Connection, keyword: dict[str, Any]) -> asyncpg.Record:
-        row = await conn.fetchrow(
-            """
-            INSERT INTO KEYWORD (keyword_id, keyword_name, normalized_name, aliases)
-            VALUES ($1, $2, $3, $4::jsonb)
-            ON CONFLICT (keyword_id) DO UPDATE SET
-                keyword_name = EXCLUDED.keyword_name,
-                normalized_name = EXCLUDED.normalized_name,
-                aliases = EXCLUDED.aliases,
-                updated_at = CURRENT_TIMESTAMP
-            RETURNING *
-            """,
-            keyword["keyword_id"],
-            keyword["keyword_name"],
-            keyword["normalized_name"],
-            _jsonb(keyword.get("aliases", [])),
-        )
-        await self._mongo_upsert_aux("keywords", {"keyword_id": keyword["keyword_id"]}, keyword)
-        return row
-
-    async def _pg_link_document_keyword(
-        self,
-        conn: asyncpg.Connection,
-        document_id: str,
-        keyword_id: str,
-    ) -> None:
-        await conn.execute(
-            """
-            INSERT INTO DOCUMENT_KEYWORD (document_id, keyword_id)
-            VALUES ($1, $2)
-            ON CONFLICT (document_id, keyword_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
-            """,
-            document_id,
-            keyword_id,
-        )
-        await self._mongo_upsert_aux(
-            "document_keywords",
-            {"document_id": document_id, "keyword_id": keyword_id},
-            {},
-        )
-
     async def _pg_upsert_document(self, conn: asyncpg.Connection, document_doc: dict[str, Any]) -> asyncpg.Record:
         document_id = _document_id(document_doc)
         concept_ref = document_doc.get("conceptMapId") or document_doc.get("concept_id")
@@ -489,20 +501,23 @@ class SyncService:
         if not concept_doc:
             raise ValueError(f"Concept not found for document {document_id}")
         pg_concept = await self._pg_upsert_concept(conn, concept_doc)
-        topic_id = pg_concept["topic_id"]
+        topic_ref = concept_doc.get("topicMapId") or concept_doc.get("topic_id")
+        topic_doc = await self.topics.find_by_map_id(str(topic_ref)) if topic_ref else None
+        if not topic_doc:
+            raise ValueError(f"Topic not found for document {document_id}")
+        pg_topic = await self._pg_upsert_topic(conn, topic_doc)
         metadata_id = await self._mongo_upsert_document_metadata(document_doc)
         row = await conn.fetchrow(
             """
             INSERT INTO DOCUMENT (
-                document_id, title, file_path, keysearch, topic_id, metadata_id,
+                document_id, title, file_path, keysearch, metadata_id,
                 content_preview, order_index, page_start, page_end
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT (document_id) DO UPDATE SET
                 title = EXCLUDED.title,
                 file_path = EXCLUDED.file_path,
                 keysearch = EXCLUDED.keysearch,
-                topic_id = EXCLUDED.topic_id,
                 metadata_id = EXCLUDED.metadata_id,
                 content_preview = EXCLUDED.content_preview,
                 order_index = EXCLUDED.order_index,
@@ -515,7 +530,6 @@ class SyncService:
             document_doc.get("title"),
             _storage_object_key(document_doc),
             document_doc.get("keysearch"),
-            topic_id,
             metadata_id,
             _content_preview(document_doc),
             document_doc.get("order_index"),
@@ -524,16 +538,21 @@ class SyncService:
         )
         await conn.execute(
             """
-            INSERT INTO DOC_CONCEPT (concept_id, document_id)
-            VALUES ($1, $2)
-            ON CONFLICT (concept_id, document_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+            INSERT INTO DOC_CONCEPT (topic_id, concept_id, document_id)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (topic_id, concept_id, document_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
             """,
+            pg_topic["topic_id"],
             pg_concept["concept_id"],
             row["document_id"],
         )
         await self._mongo_upsert_aux(
             "doc_concepts",
-            {"concept_id": pg_concept["concept_id"], "document_id": row["document_id"]},
+            {
+                "topic_id": pg_topic["topic_id"],
+                "concept_id": pg_concept["concept_id"],
+                "document_id": row["document_id"],
+            },
             {},
         )
         typedoc = await self._pg_upsert_typedoc(conn, document_doc.get("typedocs"))
@@ -552,14 +571,7 @@ class SyncService:
                 {"document_id": row["document_id"], "typedoc_id": typedoc["typedoc_id"]},
                 {},
             )
-        # Keep DOCUMENT_KEYWORD exactly aligned with the current keysearch when
-        # keyword data is present. Finalize/chunk-approve runs with keysearch empty
-        # should not wipe existing approved keywords.
-        if document_doc.get("keysearch") not in (None, ""):
-            await conn.execute("DELETE FROM DOCUMENT_KEYWORD WHERE document_id = $1", row["document_id"])
-            for keyword in _split_keywords(document_doc.get("keysearch")):
-                pg_keyword = await self._pg_upsert_keyword(conn, keyword)
-                await self._pg_link_document_keyword(conn, row["document_id"], pg_keyword["keyword_id"])
+        await self._mongo_sync_document_keywords(row["document_id"], document_doc.get("keysearch"))
         return row
 
     # ---------- Neo4j sync helpers ----------
@@ -635,10 +647,12 @@ class SyncService:
                 """
                 MERGE (s:Subject {subject_id: $subject_id})
                 SET s.pg_id = $subject_id,
+                    s.metadata_id = $metadata_id,
                     s.name = $name,
                     s.description = $description
                 """,
                 subject_id=pg_subject["subject_id"],
+                metadata_id=pg_subject["metadata_id"],
                 name=pg_subject["name"],
                 description=pg_subject["description"],
             )
@@ -667,6 +681,7 @@ class SyncService:
                 """
                 MERGE (t:Topic {topic_id: $topic_id})
                 SET t.pg_id = $topic_id,
+                    t.metadata_id = $metadata_id,
                     t.name = $name
                 WITH t
                 MATCH (s:Subject {subject_id: $subject_id})
@@ -674,56 +689,78 @@ class SyncService:
                 MERGE (t)-[:BELONGS_TO_SUBJECT]->(s)
                 """,
                 topic_id=pg_topic["topic_id"],
+                metadata_id=pg_topic["metadata_id"],
                 name=pg_topic["name"],
                 subject_id=pg_topic["subject_id"],
             )
 
     async def _neo4j_sync_concept(self, driver: AsyncDriver, pg_concept: asyncpg.Record) -> None:
         pool = await get_pg_pool()
+        topic_ids: list[str] = []
         async with pool.acquire() as conn:
-            pg_topic = await conn.fetchrow("SELECT * FROM TOPIC WHERE topic_id = $1", pg_concept["topic_id"])
-        if pg_topic:
+            topic_rows = await conn.fetch(
+                """
+                SELECT DISTINCT t.*
+                FROM TOPIC t
+                JOIN DOC_CONCEPT dc ON dc.topic_id = t.topic_id
+                WHERE dc.concept_id = $1
+                """,
+                pg_concept["concept_id"],
+            )
+        if not topic_rows:
+            concept_doc = await self.concepts.find_by_map_id(pg_concept["concept_id"])
+            topic_ref = concept_doc.get("topicMapId") or concept_doc.get("topic_id") if concept_doc else None
+            if topic_ref:
+                topic_doc = await self.topics.find_by_map_id(str(topic_ref))
+                if topic_doc:
+                    async with pool.acquire() as conn:
+                        pg_topic = await self._pg_upsert_topic(conn, topic_doc)
+                    topic_rows = [pg_topic]
+        for pg_topic in topic_rows:
+            topic_ids.append(pg_topic["topic_id"])
             await self._neo4j_sync_topic(driver, pg_topic)
         async with driver.session(database=settings.NEO4J_DATABASE) as session:
             await session.run(
                 """
                 MERGE (c:Concept {concept_id: $concept_id})
                 SET c.pg_id = $concept_id,
+                    c.metadata_id = $metadata_id,
                     c.title = $name,
                     c.name = $name,
                     c.definition = $definition,
                     c.file_path = $file_path
-                WITH c
+                """,
+                concept_id=pg_concept["concept_id"],
+                metadata_id=pg_concept["metadata_id"],
+                name=pg_concept["name"],
+                definition=pg_concept["definition"],
+                file_path=pg_concept["file_path"],
+            )
+            for topic_id in topic_ids:
+                await session.run(
+                    """
+                    MATCH (c:Concept {concept_id: $concept_id})
+                    WITH c
                 MATCH (t:Topic {topic_id: $topic_id})
                 MERGE (t)-[:HAS_CONCEPT]->(c)
                 MERGE (c)-[:BELONGS_TO_TOPIC]->(t)
                 """,
                 concept_id=pg_concept["concept_id"],
-                name=pg_concept["name"],
-                definition=pg_concept["definition"],
-                file_path=pg_concept["file_path"],
-                topic_id=pg_concept["topic_id"],
-            )
+                    topic_id=topic_id,
+                )
 
     async def _neo4j_sync_document(self, driver: AsyncDriver, pg_document: asyncpg.Record) -> None:
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
             concept_rows = await conn.fetch(
                 """
-                SELECT c.* FROM CONCEPT c
+                SELECT c.*, dc.topic_id FROM CONCEPT c
                 JOIN DOC_CONCEPT dc ON dc.concept_id = c.concept_id
                 WHERE dc.document_id = $1
                 """,
                 pg_document["document_id"],
             )
-            keyword_rows = await conn.fetch(
-                """
-                SELECT k.* FROM KEYWORD k
-                JOIN DOCUMENT_KEYWORD dk ON dk.keyword_id = k.keyword_id
-                WHERE dk.document_id = $1
-                """,
-                pg_document["document_id"],
-            )
+        keywords = _split_keywords(pg_document["keysearch"])
         for pg_concept in concept_rows:
             await self._neo4j_sync_concept(driver, pg_concept)
         async with driver.session(database=settings.NEO4J_DATABASE) as session:
@@ -753,24 +790,32 @@ class SyncService:
             for pg_concept in concept_rows:
                 await session.run(
                     """
+                    MATCH (t:Topic {topic_id: $topic_id})
                     MATCH (c:Concept {concept_id: $concept_id})
                     MATCH (d:Document {document_id: $document_id})
+                    MERGE (t)-[:HAS_CONCEPT]->(c)
+                    MERGE (c)-[:BELONGS_TO_TOPIC]->(t)
                     MERGE (c)-[:HAS_DOCUMENT]->(d)
                     MERGE (d)-[:COVERS_CONCEPT]->(c)
                     """,
+                    topic_id=pg_concept["topic_id"],
                     concept_id=pg_concept["concept_id"],
                     document_id=pg_document["document_id"],
                 )
-            for keyword in keyword_rows:
-                aliases = keyword["aliases"]
-                if isinstance(aliases, str):
-                    aliases = json.loads(aliases)
+            if pg_document["keysearch"] not in (None, ""):
+                await session.run(
+                    """
+                    MATCH (d:Document {document_id: $document_id})-[r:HAS_KEYWORD]->(:Keyword)
+                    DELETE r
+                    """,
+                    document_id=pg_document["document_id"],
+                )
+            for keyword in keywords:
                 await session.run(
                     """
                     MATCH (d:Document {document_id: $document_id})
                     MERGE (k:Keyword {keyword_id: $keyword_id})
-                    SET k.pg_id = $keyword_id,
-                        k.keyword_name = $keyword_name,
+                    SET k.keyword_name = $keyword_name,
                         k.name = $keyword_name,
                         k.normalized_name = $normalized_name,
                         k.aliases = $aliases
@@ -780,7 +825,7 @@ class SyncService:
                     keyword_id=keyword["keyword_id"],
                     keyword_name=keyword["keyword_name"],
                     normalized_name=keyword["normalized_name"],
-                    aliases=aliases or [],
+                    aliases=keyword.get("aliases") or [],
                 )
 
     # ---------- Public sync methods ----------

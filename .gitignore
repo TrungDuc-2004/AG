@@ -1,4 +1,66 @@
-/.env
-/.venv
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Environment files
+.env
+*.env
+backend/.env
+backend/app/core/config.env
+
+# Workspace generated files
+workspace/
+backend/workspace/
+**/workspace/
+
+# Upload/output/temp files
+uploads/
+outputs/
+tmp/
+temp/
+*.log
+
+# Google Drive credentials / tokens
+credentials/google-drive-token.json
+backend/credentials/google-drive-token.json
+*.token.json
+
+# Google credentials / secrets
 credentials/*.json
-credentials/*service-account*.json
+backend/credentials/*.json
+
+# Keep folder structure if needed
+!credentials/.gitkeep
+!backend/credentials/.gitkeep
+
+# Environment secrets
+.env
+*.env
+backend/.env
+backend/app/core/config.env
+
+# Generated workspace
+workspace/
+backend/workspace/
+**/workspace/
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.next/
+.vite/

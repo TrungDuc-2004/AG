@@ -20,6 +20,10 @@ KERNEL_SOURCE_DIR = BASE_DIR / "app" / "pipeline" / "kaggle_kernels" / "debug-cu
 DEFAULT_WORK_DIR = WORKSPACE_DIR / "kaggle_cutline_debug"
 DEFAULT_POLL_SECONDS = 20
 DEFAULT_TIMEOUT_SECONDS = 1800
+DEFAULT_STALE_OUTPUT_SECONDS = 120
+DEFAULT_COMPLETED_OUTPUT_ATTEMPTS = 6
+DEFAULT_SUBMIT_ATTEMPTS = 3
+DEFAULT_RETRY_DELAY_SECONDS = 20
 REQUIRED_ENV_KEYS = [
     "AI_EXTRACT_KAGGLE_USERNAME",
     "AI_EXTRACT_KAGGLE_KEY",
@@ -45,6 +49,10 @@ class KaggleCutlineConfig:
     work_dir: Path
     poll_seconds: int = DEFAULT_POLL_SECONDS
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS
+    stale_output_seconds: int = DEFAULT_STALE_OUTPUT_SECONDS
+    completed_output_attempts: int = DEFAULT_COMPLETED_OUTPUT_ATTEMPTS
+    submit_attempts: int = DEFAULT_SUBMIT_ATTEMPTS
+    retry_delay_seconds: int = DEFAULT_RETRY_DELAY_SECONDS
 
 
 def run_kaggle_cutline_debug(
@@ -80,10 +88,14 @@ def run_kaggle_cutline_debug(
         dataset_ref=config.dataset_ref,
     )
 
-    _publish_dataset(config=config, dataset_dir=dataset_dir, request_id=request_id)
-    _push_kernel(config=config, kernel_dir=kernel_dir)
-    _wait_kernel_complete(config=config)
-    _download_kernel_output(config=config, download_dir=download_dir)
+    _submit_kernel_until_matching_output(
+        config=config,
+        dataset_dir=dataset_dir,
+        kernel_dir=kernel_dir,
+        download_dir=download_dir,
+        request_id=request_id,
+        result_filename="cutline_result.json",
+    )
 
     status = _read_status(download_dir=download_dir, request_id=request_id)
     if status and status.get("request_id") != request_id:
@@ -154,10 +166,14 @@ def run_kaggle_cutline_batch(
         dataset_ref=config.dataset_ref,
     )
 
-    _publish_dataset(config=config, dataset_dir=dataset_dir, request_id=request_id)
-    _push_kernel(config=config, kernel_dir=kernel_dir)
-    _wait_kernel_complete(config=config)
-    _download_kernel_output(config=config, download_dir=download_dir)
+    _submit_kernel_until_matching_output(
+        config=config,
+        dataset_dir=dataset_dir,
+        kernel_dir=kernel_dir,
+        download_dir=download_dir,
+        request_id=request_id,
+        result_filename="cutline_results.json",
+    )
 
     status = _read_status(download_dir=download_dir, request_id=request_id)
     if status and status.get("request_id") != request_id:
@@ -214,6 +230,10 @@ def check_kaggle_cutline_readiness() -> dict[str, Any]:
             "AI_EXTRACT_KAGGLE_WORK_DIR",
             "AI_EXTRACT_KAGGLE_POLL_SECONDS",
             "AI_EXTRACT_KAGGLE_TIMEOUT_SECONDS",
+            "AI_EXTRACT_KAGGLE_STALE_OUTPUT_SECONDS",
+            "AI_EXTRACT_KAGGLE_COMPLETED_OUTPUT_ATTEMPTS",
+            "AI_EXTRACT_KAGGLE_SUBMIT_ATTEMPTS",
+            "AI_EXTRACT_KAGGLE_RETRY_DELAY_SECONDS",
         ],
         "notes": notes,
     }
@@ -260,6 +280,16 @@ def _load_config(*, validate_cli: bool = True) -> KaggleCutlineConfig:
     work_dir = Path(os.getenv("AI_EXTRACT_KAGGLE_WORK_DIR", str(DEFAULT_WORK_DIR)))
     poll_seconds = int(os.getenv("AI_EXTRACT_KAGGLE_POLL_SECONDS", str(DEFAULT_POLL_SECONDS)))
     timeout_seconds = int(os.getenv("AI_EXTRACT_KAGGLE_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS)))
+    stale_output_seconds = int(
+        os.getenv("AI_EXTRACT_KAGGLE_STALE_OUTPUT_SECONDS", str(DEFAULT_STALE_OUTPUT_SECONDS))
+    )
+    completed_output_attempts = int(
+        os.getenv("AI_EXTRACT_KAGGLE_COMPLETED_OUTPUT_ATTEMPTS", str(DEFAULT_COMPLETED_OUTPUT_ATTEMPTS))
+    )
+    submit_attempts = int(os.getenv("AI_EXTRACT_KAGGLE_SUBMIT_ATTEMPTS", str(DEFAULT_SUBMIT_ATTEMPTS)))
+    retry_delay_seconds = int(
+        os.getenv("AI_EXTRACT_KAGGLE_RETRY_DELAY_SECONDS", str(DEFAULT_RETRY_DELAY_SECONDS))
+    )
 
     missing = _missing_required_env()
     if missing:
@@ -277,6 +307,10 @@ def _load_config(*, validate_cli: bool = True) -> KaggleCutlineConfig:
         work_dir=work_dir,
         poll_seconds=poll_seconds,
         timeout_seconds=timeout_seconds,
+        stale_output_seconds=stale_output_seconds,
+        completed_output_attempts=completed_output_attempts,
+        submit_attempts=submit_attempts,
+        retry_delay_seconds=retry_delay_seconds,
     )
 
 
@@ -506,15 +540,151 @@ def _download_kernel_output(
     )
 
 
+def _submit_kernel_until_matching_output(
+    *,
+    config: KaggleCutlineConfig,
+    dataset_dir: Path,
+    kernel_dir: Path,
+    download_dir: Path,
+    request_id: str,
+    result_filename: str,
+) -> None:
+    last_error: KaggleCutlineError | None = None
+
+    for attempt in range(1, config.submit_attempts + 1):
+        _publish_dataset(config=config, dataset_dir=dataset_dir, request_id=request_id)
+        _push_kernel(config=config, kernel_dir=kernel_dir)
+        try:
+            _wait_for_request_output(
+                config=config,
+                download_dir=download_dir,
+                request_id=request_id,
+                result_filename=result_filename,
+            )
+            return
+        except KaggleCutlineError as exc:
+            last_error = exc
+            if not _is_retryable_stale_output_error(exc) or attempt >= config.submit_attempts:
+                raise
+            time.sleep(config.retry_delay_seconds)
+
+    if last_error:
+        raise last_error
+
+
+def _is_retryable_stale_output_error(exc: KaggleCutlineError) -> bool:
+    message = str(exc)
+    return (
+        "different request_id" in message
+        or "could not download a matching output" in message
+        or "belongs to a different request_id" in message
+    )
+
+
+def _wait_for_request_output(
+    *,
+    config: KaggleCutlineConfig,
+    download_dir: Path,
+    request_id: str,
+    result_filename: str,
+) -> None:
+    started = time.monotonic()
+    last_mismatch: dict[str, Any] | None = None
+    mismatch_started: float | None = None
+    completed_output_attempts = 0
+
+    while True:
+        elapsed = time.monotonic() - started
+        kernel_status = _run_kaggle_command(
+            config,
+            ["kaggle", "kernels", "status", config.kernel_ref],
+        ).stdout.strip()
+        kernel_completed = "KernelWorkerStatus.COMPLETE" in kernel_status
+
+        if "KernelWorkerStatus.FAILED" in kernel_status or "KernelWorkerStatus.ERROR" in kernel_status:
+            raise KaggleCutlineError(f"Kaggle kernel failed: {kernel_status}")
+
+        try:
+            _download_kernel_output(config=config, download_dir=download_dir)
+        except KaggleCutlineError:
+            if elapsed > config.timeout_seconds:
+                raise
+            time.sleep(config.poll_seconds)
+            continue
+
+        status = _read_status(download_dir=download_dir, request_id=request_id)
+        result_path = download_dir / result_filename
+        result = read_json(result_path) if result_path.exists() else None
+        result_request_id = result.get("request_id") if isinstance(result, dict) else None
+
+        if status and status.get("request_id") == request_id:
+            if status.get("status") == "failed":
+                return
+            if isinstance(result, dict) and result_request_id == request_id:
+                return
+            if status.get("status") == "completed" and not result_path.exists():
+                raise KaggleCutlineError(
+                    f"Kaggle status completed but output was not found: {result_path}"
+                )
+            if status.get("status") == "completed" and result_request_id and result_request_id != request_id:
+                last_mismatch = {
+                    "expected_request_id": request_id,
+                    "downloaded_request_id": result_request_id,
+                    "downloaded_status": status.get("status"),
+                    "source": result_filename,
+                }
+            mismatch_started = None
+        elif status:
+            if mismatch_started is None:
+                mismatch_started = time.monotonic()
+            last_mismatch = {
+                "expected_request_id": request_id,
+                "downloaded_request_id": status.get("request_id"),
+                "downloaded_status": status.get("status"),
+                "source": "current_run_status.json",
+            }
+            mismatch_elapsed = time.monotonic() - mismatch_started
+            if kernel_completed and mismatch_elapsed > config.stale_output_seconds:
+                raise KaggleCutlineError(
+                    "Kaggle completed, but the downloaded output still belongs to a different request_id. "
+                    "This usually means the kernel ran with a stale Kaggle dataset input. "
+                    f"expected_request_id={request_id}; downloaded_request_id={status.get('request_id')}; "
+                    f"downloaded_status={status.get('status')}; waited_stale_seconds={int(mismatch_elapsed)}."
+                )
+
+        if kernel_completed:
+            completed_output_attempts += 1
+            if completed_output_attempts >= config.completed_output_attempts:
+                detail = f" Last downloaded mismatch: {last_mismatch}." if last_mismatch else ""
+                raise KaggleCutlineError(
+                    "Kaggle kernel completed, but backend could not download a matching output "
+                    f"for request_id={request_id} after {completed_output_attempts} attempt(s).{detail}"
+                )
+        else:
+            completed_output_attempts = 0
+
+        if elapsed > config.timeout_seconds:
+            detail = f" Last downloaded status: {last_mismatch}." if last_mismatch else ""
+            raise KaggleCutlineError(
+                f"Timed out waiting for Kaggle output for request_id={request_id}.{detail}"
+            )
+
+        time.sleep(config.poll_seconds)
+
+
 def _read_status(download_dir: Path, request_id: str) -> dict[str, Any] | None:
     candidates = [
         download_dir / f"current_run_status_{request_id}.json",
         download_dir / "current_run_status.json",
     ]
+    fallback: dict[str, Any] | None = None
     for candidate in candidates:
         if not candidate.exists():
             continue
         payload = read_json(candidate)
         if isinstance(payload, dict):
-            return payload
-    return None
+            if payload.get("request_id") == request_id:
+                return payload
+            if fallback is None:
+                fallback = payload
+    return fallback

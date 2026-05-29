@@ -81,6 +81,7 @@ class FileService:
         title: str,
         conceptMapId: str,
         typedocs: str,
+        metadata_id: str | None = None,
         description: str | None = None,
         keysearch: str | None = None,
         createdBy: str = "USER_001",
@@ -112,6 +113,7 @@ class FileService:
 
         model = DocumentModel(
             map_id=map_id,
+            metadata_id=metadata_id,
             title=title,
             description=description,
             keysearch=keysearch,

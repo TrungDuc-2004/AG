@@ -19,6 +19,7 @@ class ClassResponse(ClassCreate):
 
 class SubjectCreate(BaseModel):
     map_id: str
+    metadata_id: str | None = None
     name: str
     filePath: str | None = ""
     classMapId: str
@@ -34,6 +35,7 @@ class SubjectResponse(SubjectCreate):
 
 class TopicCreate(BaseModel):
     map_id: str
+    metadata_id: str | None = None
     subjectMapId: str
     name: str
     description: str | None = None
@@ -51,6 +53,7 @@ class TopicResponse(TopicCreate):
 
 class ConceptCreate(BaseModel):
     map_id: str
+    metadata_id: str | None = None
     topicMapId: str
     name: str
     filePath: str | None = ""
@@ -67,6 +70,7 @@ class ConceptResponse(ConceptCreate):
 
 class DocumentCreate(BaseModel):
     map_id: str
+    metadata_id: str | None = None
     title: str
     description: str | None = None
     keysearch: str | None = None
