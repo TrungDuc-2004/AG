@@ -1,7 +1,7 @@
 {
-  "saved_at_epoch": 1780027860.5034468,
-  "next_idx": 14,
-  "call_count": 27,
+  "saved_at_epoch": 1780030125.832949,
+  "next_idx": 13,
+  "call_count": 29,
   "cycle_count": 1,
   "keys": [
     {
@@ -9,105 +9,105 @@
       "label": "GEMINI_API_KEY_1",
       "key_hash": "a38373a935a3e78c069cc76c95be77378492b0081c1847d46ff1f4c57a691817",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029842.2587013
     },
     {
       "index": 1,
       "label": "GEMINI_API_KEY_2",
       "key_hash": "317be43c07276f23c22adc0044eb0c12a0a3cfbf5f144d638cfdcd51b655686f",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029842.9045224
     },
     {
       "index": 2,
       "label": "GEMINI_API_KEY_3",
       "key_hash": "4d301eb31cc2ecfbf01ca363a486ca9a4e023c5caa1996905629466505339928",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029843.5396824
     },
     {
       "index": 3,
       "label": "GEMINI_API_KEY_4",
       "key_hash": "1a5234fce5522046af843aa3b3cac11ae08f8228f9a83bc92c65c7c198a3741a",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029844.1784983
     },
     {
       "index": 4,
       "label": "GEMINI_API_KEY_5",
       "key_hash": "3a08f58420b9d96ad8a1898bafbde50e304bc1e9880273d467f81a43e5e20b02",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029844.8586297
     },
     {
       "index": 5,
       "label": "GEMINI_API_KEY_6",
       "key_hash": "21c93a11809e9d8d816e899cda01fb93f9ec9a14e88c64f6fa3293da38e782e8",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029845.6646454
     },
     {
       "index": 6,
       "label": "GEMINI_API_KEY_7",
       "key_hash": "97e71b67e949aa3a44dfef5718cb1cbabd63a453ecaf58f3029687bc02adca11",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029846.3846407
     },
     {
       "index": 7,
       "label": "GEMINI_API_KEY_8",
       "key_hash": "d2af0fc700b59aca16809e8a841e9e765eebfa1860743cd0d82e4b8e4a97eb38",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029847.0718894
     },
     {
       "index": 8,
       "label": "GEMINI_API_KEY_9",
       "key_hash": "c0316166454a0e13abafe4d52dc5e7f1326b408ddd3d468e11c8c63067bcb34b",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029847.7461867
     },
     {
       "index": 9,
       "label": "GEMINI_API_KEY_10",
       "key_hash": "c2d6425d7403ee03f56118281392487c0aad15f50b37ad4a9a6f6cc09038f4fd",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029848.4141543
     },
     {
       "index": 10,
       "label": "GEMINI_API_KEY_11",
       "key_hash": "4f56ff0637d5428663f95330eee28f38697f75188a59719c6b4c6039404d95c2",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029853.6727343
     },
     {
       "index": 11,
       "label": "GEMINI_API_KEY_12",
       "key_hash": "b9c8c25557cffeb23cc89c7e741d80b8909daea090ef1a5d1cd4b6ab7f3faf36",
-      "cooldown_until_epoch": 1780028121.5034468,
+      "cooldown_until_epoch": null,
       "is_dead": false,
       "dead_reason": null,
       "dead_at_epoch": null
@@ -135,54 +135,54 @@
       "label": "GEMINI_API_KEY_15",
       "key_hash": "b063e582c97f728b6bec9e76efb66a0993a0cb02d93145bb2e713b6b5b34e9b8",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029838.689087
     },
     {
       "index": 15,
       "label": "GEMINI_API_KEY_16",
       "key_hash": "4f79a9b99ae740b7702684338b3a1001e650204c5d1c82994cfbb2f4317c5179",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029839.2757096
     },
     {
       "index": 16,
       "label": "GEMINI_API_KEY_17",
       "key_hash": "56270d4cd07ea7df847e031b78282d9329fb0542d4fa9e41e7a3226b2a7494ef",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029839.9021983
     },
     {
       "index": 17,
       "label": "GEMINI_API_KEY_18",
       "key_hash": "4b68baa9ff50a846eb7336b651cc70f6cff8e06a5401971699997992be952e0d",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029840.4954243
     },
     {
       "index": 18,
       "label": "GEMINI_API_KEY_19",
       "key_hash": "e4503c642db21fca260e8e86b15705eee7c8a91fff93b5db5d24a74d6bd8c5db",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029841.0751488
     },
     {
       "index": 19,
       "label": "GEMINI_API_KEY_20",
       "key_hash": "e0e3c5a0663ed8982e50187f65ad33e3c0e071ceea757a7bd1476e613613be56",
       "cooldown_until_epoch": null,
-      "is_dead": false,
-      "dead_reason": null,
-      "dead_at_epoch": null
+      "is_dead": true,
+      "dead_reason": "reported-as-leaked",
+      "dead_at_epoch": 1780029841.653867
     }
   ]
 }

@@ -139,6 +139,10 @@ class FileService:
             updatedAt=now,
         )
         created = await self.documents.insert_one(mongo_dump(model))
+        if created.get("id"):
+            updated = await self.documents.update_by_map_id(map_id, {"metadata_id": str(created["id"])})
+            if updated:
+                created = updated
         created["sync"] = await safe_auto_sync("documents", created["map_id"])
         return created
 

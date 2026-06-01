@@ -59,10 +59,6 @@ def _doc_id(lesson_name: str, chunk_name: str) -> str:
     return f"{lesson_name}_{chunk_name}"[:100]
 
 
-def _metadata_id(document_id: str) -> str:
-    return f"META_{document_id}"[:255]
-
-
 def _keyword_names_from_result(result: dict[str, Any]) -> list[str]:
     names: list[str] = []
     for item in result.get("keywords") or []:
@@ -148,6 +144,13 @@ class ExtractPersistenceService:
         self.topic_bags = TopicBagRepository()
         self.storage = StorageService()
 
+    async def _set_metadata_id(self, repo: Any, map_id: str, doc: dict[str, Any]) -> dict[str, Any]:
+        metadata_id = doc.get("id")
+        if not metadata_id:
+            return doc
+        updated = await repo.update_by_map_id(map_id, {"metadata_id": str(metadata_id)})
+        return updated or {**doc, "metadata_id": str(metadata_id)}
+
     async def _ensure_class_subject(
         self,
         *,
@@ -195,16 +198,16 @@ class ExtractPersistenceService:
         subject_doc = await self.subjects.upsert_by_map_id(
             subject_id,
             {
-                    "map_id": subject_id,
-                    "subject_id": subject_id,
-                    "metadata_id": _metadata_id(subject_id),
-                    "name": subject_id,
+                "map_id": subject_id,
+                "subject_id": subject_id,
+                "name": subject_id,
                 "classMapId": class_id,
                 "class_id": class_id,
                 "description": None,
                 "filePath": "",
             },
         )
+        subject_doc = await self._set_metadata_id(self.subjects, subject_id, subject_doc)
         await safe_auto_sync("subjects", subject_id)
         return class_doc, subject_doc
 
@@ -275,7 +278,6 @@ class ExtractPersistenceService:
                 {
                     "map_id": topic_id,
                     "topic_id": topic_id,
-                    "metadata_id": _metadata_id(topic_id),
                     "subjectMapId": subject_id,
                     "subject_id": subject_id,
                     "name": title,
@@ -284,6 +286,7 @@ class ExtractPersistenceService:
                     "filePath": file_path,
                 },
             )
+            doc = await self._set_metadata_id(self.topics, topic_id, doc)
             sync = await safe_auto_sync("topics", topic_id)
             persisted.append({"topic_id": topic_id, "mongo_id": doc.get("id"), "filePath": file_path, "storage": storage_info, "sync": sync})
 
@@ -336,7 +339,6 @@ class ExtractPersistenceService:
                 {
                     "map_id": lesson_id,
                     "concept_id": lesson_id,
-                    "metadata_id": _metadata_id(lesson_id),
                     "topicMapId": topic_id,
                     "name": lesson_title,
                     "definition": None,
@@ -344,6 +346,7 @@ class ExtractPersistenceService:
                     "filePath": file_path,
                 },
             )
+            doc = await self._set_metadata_id(self.concepts, lesson_id, doc)
             sync = await safe_auto_sync("concepts", lesson_id)
             persisted.append({"concept_id": lesson_id, "mongo_id": doc.get("id"), "filePath": file_path, "storage": storage_info, "sync": sync})
 
@@ -538,7 +541,6 @@ class ExtractPersistenceService:
             "storage": storage.model_dump(mode="python"),
             "content": DocumentContent(summary=None).model_dump(mode="python"),
             "stemInfo": StemInfo().model_dump(mode="python"),
-            "metadata_id": _metadata_id(document_id),
             "filePath": storage.objectKey,
             "content_preview": None,
             "order_index": _number_from_name(chunk_name),
@@ -599,6 +601,7 @@ class ExtractPersistenceService:
                     apply_keywords=apply_keywords,
                 )
                 doc = await self.documents.upsert_by_map_id(document_id, payload)
+                doc = await self._set_metadata_id(self.documents, document_id, doc)
                 sync = await self._sync_document_checked(document_id)
                 persisted.append(
                     {
@@ -794,6 +797,7 @@ class ExtractPersistenceService:
                 apply_keywords=True,
             )
             doc = await self.documents.upsert_by_map_id(document_id, payload)
+            doc = await self._set_metadata_id(self.documents, document_id, doc)
             sync = await self._sync_document_checked(document_id)
             persisted.append(
                 {

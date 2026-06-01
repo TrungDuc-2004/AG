@@ -67,14 +67,23 @@ def _document_id(doc: dict[str, Any]) -> str:
     return _doc_business_id(doc, "document_id")
 
 
+def _mongo_object_id(doc: dict[str, Any]) -> str | None:
+    if doc.get("id"):
+        return str(doc["id"])
+    if doc.get("_id"):
+        return str(doc["_id"])
+    return None
+
+
 def _entity_metadata_id(doc: dict[str, Any], business_id: str) -> str:
     metadata = doc.get("metadata") if isinstance(doc.get("metadata"), dict) else {}
     return str(
-        doc.get("metadata_id")
+        _mongo_object_id(doc)
+        or doc.get("metadata_id")
         or doc.get("metadataId")
         or metadata.get("metadata_id")
         or metadata.get("metadataId")
-        or f"META_{business_id}"
+        or business_id
     )[:255]
 
 
@@ -266,6 +275,22 @@ class SyncService:
         )
         return metadata_id
 
+    async def _mongo_set_source_metadata_id(
+        self,
+        collection_name: str,
+        map_id: str,
+        metadata_id: str,
+    ) -> None:
+        await get_database()[collection_name].update_one(
+            {"map_id": map_id},
+            {
+                "$set": {
+                    "metadata_id": metadata_id,
+                    "updatedAt": datetime.now(timezone.utc),
+                }
+            },
+        )
+
     async def _mongo_sync_document_keywords(self, document_id: str, keysearch: str | None) -> None:
         """Keep Mongo keywords/document_keywords aligned with DOCUMENT.keysearch.
 
@@ -283,7 +308,6 @@ class SyncService:
         for keyword in keywords:
             keyword_payload = {
                 **keyword,
-                "metadata_id": _entity_metadata_id(keyword, keyword["keyword_id"]),
                 "updatedAt": now,
             }
             await db.keywords.update_one(
@@ -294,6 +318,12 @@ class SyncService:
                 },
                 upsert=True,
             )
+            saved_keyword = await db.keywords.find_one({"keyword_id": keyword["keyword_id"]})
+            if saved_keyword and saved_keyword.get("_id"):
+                await db.keywords.update_one(
+                    {"keyword_id": keyword["keyword_id"]},
+                    {"$set": {"metadata_id": str(saved_keyword["_id"]), "updatedAt": now}},
+                )
             await db.document_keywords.update_one(
                 {"document_id": document_id, "keyword_id": keyword["keyword_id"]},
                 {
@@ -329,6 +359,8 @@ class SyncService:
 
     async def _pg_upsert_subject(self, conn: asyncpg.Connection, subject_doc: dict[str, Any]) -> asyncpg.Record:
         subject_id = _subject_id(subject_doc)
+        metadata_id = _entity_metadata_id(subject_doc, subject_id)
+        await self._mongo_set_source_metadata_id("subjects", str(subject_doc.get("map_id") or subject_id), metadata_id)
         class_ref = subject_doc.get("classMapId") or subject_doc.get("class_id")
         if not class_ref:
             raise ValueError(f"Subject {subject_id} missing classMapId/class_id")
@@ -348,7 +380,7 @@ class SyncService:
             RETURNING *
             """,
             subject_id,
-            _entity_metadata_id(subject_doc, subject_id),
+            metadata_id,
             subject_doc.get("name"),
             subject_doc.get("description"),
         )
@@ -370,6 +402,8 @@ class SyncService:
 
     async def _pg_upsert_topic(self, conn: asyncpg.Connection, topic_doc: dict[str, Any]) -> asyncpg.Record:
         topic_id = _topic_id(topic_doc)
+        metadata_id = _entity_metadata_id(topic_doc, topic_id)
+        await self._mongo_set_source_metadata_id("topics", str(topic_doc.get("map_id") or topic_id), metadata_id)
         subject_ref = topic_doc.get("subjectMapId") or topic_doc.get("subject_id")
         if not subject_ref:
             raise ValueError(f"Topic {topic_id} missing subjectMapId/subject_id")
@@ -389,13 +423,15 @@ class SyncService:
             RETURNING *
             """,
             topic_id,
-            _entity_metadata_id(topic_doc, topic_id),
+            metadata_id,
             pg_subject["subject_id"],
             topic_doc.get("name"),
         )
 
     async def _pg_upsert_concept(self, conn: asyncpg.Connection, concept_doc: dict[str, Any]) -> asyncpg.Record:
         concept_id = _concept_id(concept_doc)
+        metadata_id = _entity_metadata_id(concept_doc, concept_id)
+        await self._mongo_set_source_metadata_id("concepts", str(concept_doc.get("map_id") or concept_id), metadata_id)
         topic_ref = concept_doc.get("topicMapId") or concept_doc.get("topic_id")
         if not topic_ref:
             raise ValueError(f"Concept {concept_id} missing topicMapId/topic_id")
@@ -416,7 +452,7 @@ class SyncService:
             RETURNING *
             """,
             concept_id,
-            _entity_metadata_id(concept_doc, concept_id),
+            metadata_id,
             concept_doc.get("name"),
             concept_doc.get("definition"),
             concept_doc.get("filePath") or concept_doc.get("file_path"),
@@ -494,6 +530,8 @@ class SyncService:
 
     async def _pg_upsert_document(self, conn: asyncpg.Connection, document_doc: dict[str, Any]) -> asyncpg.Record:
         document_id = _document_id(document_doc)
+        metadata_id = _metadata_id(document_doc)
+        await self._mongo_set_source_metadata_id("documents", str(document_doc.get("map_id") or document_id), metadata_id)
         concept_ref = document_doc.get("conceptMapId") or document_doc.get("concept_id")
         if not concept_ref:
             raise ValueError(f"Document {document_id} missing conceptMapId/concept_id")
@@ -506,7 +544,7 @@ class SyncService:
         if not topic_doc:
             raise ValueError(f"Topic not found for document {document_id}")
         pg_topic = await self._pg_upsert_topic(conn, topic_doc)
-        metadata_id = await self._mongo_upsert_document_metadata(document_doc)
+        await self._mongo_upsert_document_metadata({**document_doc, "metadata_id": metadata_id})
         row = await conn.fetchrow(
             """
             INSERT INTO DOCUMENT (

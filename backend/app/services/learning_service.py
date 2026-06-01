@@ -27,6 +27,14 @@ class LearningService:
         self.documents = DocumentRepository()
         self.users = UserRepository()
 
+    async def _set_metadata_id(self, repo, created: dict[str, Any]) -> dict[str, Any]:
+        metadata_id = created.get("id")
+        map_id = created.get("map_id")
+        if not metadata_id or not map_id:
+            return created
+        updated = await repo.update_by_map_id(str(map_id), {"metadata_id": str(metadata_id)})
+        return updated or {**created, "metadata_id": str(metadata_id)}
+
     async def create_class(self, data: dict[str, Any]) -> dict[str, Any]:
         model = ClassModel(**data)
         created = await self.classes.insert_one(mongo_dump(model))
@@ -38,6 +46,7 @@ class LearningService:
             raise ValueError("classMapId does not exist")
         model = SubjectModel(**data)
         created = await self.subjects.insert_one(mongo_dump(model))
+        created = await self._set_metadata_id(self.subjects, created)
         created["sync"] = await safe_auto_sync("subjects", created["map_id"])
         return created
 
@@ -46,6 +55,7 @@ class LearningService:
             raise ValueError("subjectMapId does not exist")
         model = TopicModel(**data)
         created = await self.topics.insert_one(mongo_dump(model))
+        created = await self._set_metadata_id(self.topics, created)
         created["sync"] = await safe_auto_sync("topics", created["map_id"])
         return created
 
@@ -54,6 +64,7 @@ class LearningService:
             raise ValueError("topicMapId does not exist")
         model = ConceptModel(**data)
         created = await self.concepts.insert_one(mongo_dump(model))
+        created = await self._set_metadata_id(self.concepts, created)
         created["sync"] = await safe_auto_sync("concepts", created["map_id"])
         return created
 
@@ -62,6 +73,7 @@ class LearningService:
             raise ValueError("conceptMapId does not exist")
         model = DocumentModel(**data)
         created = await self.documents.insert_one(mongo_dump(model))
+        created = await self._set_metadata_id(self.documents, created)
         created["sync"] = await safe_auto_sync("documents", created["map_id"])
         return created
 
